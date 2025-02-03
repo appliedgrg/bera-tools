@@ -114,6 +114,5 @@ if __name__ == '__main__':
     print_message("Starting ground footprint")
     args_footprint_fixed = params["args_footprint_fixed"]
     args_footprint_fixed['processes'] = processes
-    args_footprint_fixed['parallel_mode'] = ParallelMode.SEQUENTIAL
     print(args_footprint_fixed)
     line_footprint_fixed(**args_footprint_fixed)
