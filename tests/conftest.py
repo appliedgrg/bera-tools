@@ -48,7 +48,7 @@ def tool_arguments(testdata_dir):
         "args_centerline": {
             'in_line': testdata_dir.joinpath('seed_lines.gpkg').as_posix(),
             'in_layer': 'seed_lines',
-            'in_raster': testdata_dir.joinpath('CHM.tif').as_posix(),
+            'in_raster': testdata_dir.joinpath('chm.tif').as_posix(),
             'line_radius': 15,
             'proc_segments': True,
             'out_line': testdata_dir.joinpath('centerline.gpkg').as_posix(),
@@ -58,7 +58,7 @@ def tool_arguments(testdata_dir):
         },
         "args_footprint_abs": {
             'in_line': testdata_dir.joinpath('centerline.gpkg').as_posix(),
-            'in_chm': testdata_dir.joinpath('CHM.tif').as_posix(),
+            'in_chm': testdata_dir.joinpath('chm.tif').as_posix(),
             'in_layer': 'centerline',
             'corridor_thresh': 3.0,
             'max_ln_width': 32.0,
@@ -70,7 +70,7 @@ def tool_arguments(testdata_dir):
         },
         "args_footprint_rel": {
             'in_line': testdata_dir.joinpath('centerline.gpkg').as_posix(),
-            'in_chm': testdata_dir.joinpath('CHM.tif').as_posix(),
+            'in_chm': testdata_dir.joinpath('chm.tif').as_posix(),
             'out_footprint': testdata_dir.joinpath('footprint_rel.gpkg').as_posix(),
             'in_layer': 'centerline',
             'out_layer': 'footprint_rel',
