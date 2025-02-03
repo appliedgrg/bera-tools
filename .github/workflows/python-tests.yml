@@ -25,6 +25,11 @@ jobs:
           python-version: '3.11'
           auto-update-conda: true
 
+      - name: Initialize Conda
+        run: |
+          conda init bash  # Initialize Conda for the shell environment
+          source ~/.bashrc  # Reload the shell configuration
+
       - name: Create Conda Environment
         run: |
           conda env create -f conda_environment.yml 
