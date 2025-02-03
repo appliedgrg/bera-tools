@@ -20,7 +20,6 @@ requirements:
   host:
     - python >=3.9
     - hatchling
-    - pip
   run:
     - python >=3.9
     - bera_centerlines
@@ -29,7 +28,6 @@ requirements:
     - distributed
     - gdal
     - geopandas
-    - pip
     - pyogrio
     - psutil
     - pyqt

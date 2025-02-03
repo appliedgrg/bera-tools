@@ -17,6 +17,7 @@ dependencies:
   - geopandas
   - pyogrio>=0.9.0
   - pyqt
+  - pytest
   - psutil
   - rioxarray
   - rpy2
@@ -30,5 +31,4 @@ dependencies:
   - scikit-image>=0.24.0
   - tqdm
   - xarray-spatial
-  - pip
 variables:
