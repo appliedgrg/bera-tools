@@ -31,9 +31,4 @@ dependencies:
   - tqdm
   - xarray-spatial
   - pip
-  # - pip:
-    # works for pypi packages
-    # - pyqtlet2
-    # works for wheels
-    # - http://URL_TO_THE_WHEEL.whl
 variables:

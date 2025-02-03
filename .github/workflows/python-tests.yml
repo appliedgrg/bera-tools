@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -20,9 +20,12 @@ jobs:
         with:
           python-version: '3.x'
           auto-update-conda: true
-          environment-file: conda_environment.yml  # Ensure you have an environment.yml file
-          activate-environment: test-env       # Replace with your env name
 
-      - name: Run Tests
+      - name: Create Conda Environment
         run: |
-          pytest
+          conda env create -f conda_environment.yml 
+
+      - name: Activate Environment and Run Tests
+        run: |
+          conda activate bera  # Activate your environment
+          pytest --maxfail=1 --disable-warnings -v
