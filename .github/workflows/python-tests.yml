@@ -4,17 +4,14 @@ on:
   push:
     branches:
       - develop
-    # paths:
-    #   - 'beratools/**'  # file changes inside "beratools" will trigger the action 
   pull_request:
     branches:
       - develop
-    # paths:
-    #   - 'beratools/**'  # file changes inside "beratools" will trigger the action 
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use Linux runner
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -27,14 +24,16 @@ jobs:
 
       - name: Initialize Conda
         run: |
-          conda init bash  # Initialize Conda for the shell environment
-          source ~/.bashrc  # Reload the shell configuration
+          conda init bash  # Initialize conda for bash
+          source ~/.bashrc  # Reload bash configuration
 
       - name: Create Conda Environment
         run: |
-          conda env create -f conda_environment.yml 
+          conda env create -f conda_environment.yml  # Create environment from environment.yml
 
-      - name: Activate Environment and Run Tests
+      - name: Activate Conda Environment and Run Tests
         run: |
-          conda activate bera  # Activate your environment
-          pytest --maxfail=1 --disable-warnings -v
+          # Explicitly load Conda to ensure `conda activate` works
+          source ~/.bashrc  # Reload the configuration to ensure conda is available
+          conda activate bera  # Activate the 'bera' environment
+          pytest --maxfail=1 --disable-warnings -v  # Run tests
