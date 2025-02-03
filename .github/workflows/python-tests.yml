@@ -1,0 +1,28 @@
+name: Python Tests
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.x'
+          auto-update-conda: true
+          environment-file: conda_environment.yml  # Ensure you have an environment.yml file
+          activate-environment: test-env       # Replace with your env name
+
+      - name: Run Tests
+        run: |
+          pytest
