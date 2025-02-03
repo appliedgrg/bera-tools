@@ -1,0 +1,22 @@
+/.idea
+/.vscode
+/.spyproject
+/data
+.data
+/beratools/gui/icons/grass
+*.pyc
+*.whl
+/dist
+.project
+.pydevproject
+BERATools.bat
+output
+.env
+# pixi environments
+.pixi
+*.egg-info
+pixi.lock
+notebooks/params_hpc.yml
+notebooks/params_win.yml
+notebooks/full_workflow.slurm
+__pycache__
