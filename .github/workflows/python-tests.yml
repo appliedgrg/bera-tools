@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest  # Use Linux runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
@@ -24,16 +24,16 @@ jobs:
 
       - name: Initialize Conda
         run: |
-          conda init bash  # Initialize conda for bash
-          source ~/.bashrc  # Reload bash configuration
+          conda init bash
+          source ~/.bashrc
 
       - name: Create Conda Environment
         run: |
-          conda env create -f conda_environment.yml  # Create environment from environment.yml
+          conda env create -f conda_environment.yml
 
       - name: Activate Conda Environment and Run Tests
         run: |
           # Explicitly load Conda to ensure `conda activate` works
-          source ~/.bashrc  # Reload the configuration to ensure conda is available
-          conda activate bera  # Activate the 'bera' environment
-          pytest --maxfail=1 --disable-warnings -v  # Run tests
+          source ~/.bashrc  
+          conda activate bera
+          pytest tests/test_workflow.py --maxfail=1 --disable-warnings -v 

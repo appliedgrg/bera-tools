@@ -2,6 +2,7 @@
 
 import logging
 import sys
+import time
 import warnings
 from pathlib import Path
 
@@ -97,3 +98,24 @@ def tool_arguments(testdata_dir):
             'verbose': False
         }
     }
+
+# A test for cleaning up test output files
+@pytest.fixture
+def test_output_files(testdata_dir):
+    return [
+        testdata_dir.joinpath('centerline.gpkg'),
+        testdata_dir.joinpath('footprint_abs.gpkg'),
+        testdata_dir.joinpath('footprint_rel.gpkg'),
+        testdata_dir.joinpath('footprint_final.gpkg'),
+        testdata_dir.joinpath('footprint_final_aux.gpkg')
+    ]
+
+@pytest.fixture
+def cleanup_output_files(test_output_files):
+    """Fixture to clean up generated output files after the test."""
+    yield  # Yield here allows the test to run first
+    time.sleep(1)  # Wait a little to allow file system operations to complete
+    for file_path in test_output_files:
+        if file_path.exists():
+            file_path.unlink()
+            assert not file_path.exists(), f"Failed to remove {file_path}"
