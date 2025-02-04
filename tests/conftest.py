@@ -1,6 +1,7 @@
 """Test configuration file for the BERA Tools package."""
 
 import logging
+import os
 import sys
 import time
 import warnings
@@ -42,9 +43,13 @@ def pytest_configure(config):
 def testdata_dir():
     return Path(__file__).parent.joinpath("data")
 
+@pytest.fixture(scope="session")
+def available_cpu_cores():
+    return os.cpu_count()
+
 # Shared arguments for all tools, now using the `testdata_dir` fixture
 @pytest.fixture
-def tool_arguments(testdata_dir):
+def tool_arguments(testdata_dir, available_cpu_cores):
     return {
         "args_centerline": {
             'in_line': testdata_dir.joinpath('seed_lines.gpkg').as_posix(),
@@ -54,7 +59,7 @@ def tool_arguments(testdata_dir):
             'proc_segments': True,
             'out_line': testdata_dir.joinpath('centerline.gpkg').as_posix(),
             'out_layer': 'centerline',
-            'processes': 8,
+            'processes': available_cpu_cores,
             'verbose': False
         },
         "args_footprint_abs": {
@@ -66,7 +71,7 @@ def tool_arguments(testdata_dir):
             'exp_shk_cell': 0,
             'out_footprint': testdata_dir.joinpath('footprint_abs.gpkg').as_posix(),
             'out_layer': 'footprint_abs',
-            'processes': 8,
+            'processes': available_cpu_cores,
             'verbose': False
         },
         "args_footprint_rel": {
@@ -81,7 +86,7 @@ def tool_arguments(testdata_dir):
             'canopy_avoidance': 0.0,
             'exponent': 0,
             'canopy_thresh_percentage': 50,
-            'processes': 8,
+            'processes': available_cpu_cores,
             'verbose': False
         },
         "args_line_footprint_fixed": {
@@ -94,7 +99,7 @@ def tool_arguments(testdata_dir):
             'max_width': True,
             'out_footprint': testdata_dir.joinpath('footprint_final.gpkg').as_posix(),
             'out_layer': 'footprint_fixed',
-            'processes': 8,
+            'processes': available_cpu_cores,
             'verbose': False
         }
     }
