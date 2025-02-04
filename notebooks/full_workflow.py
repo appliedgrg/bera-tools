@@ -6,6 +6,7 @@ usage:
 """
 
 import argparse
+import configparser
 import os
 import platform
 import sys
@@ -88,6 +89,20 @@ if __name__ == '__main__':
 
     with open(yml_file) as in_params:
         params = yaml.safe_load(in_params)
+
+    # Read config.ini to get the base directory
+    config = configparser.ConfigParser()
+    config.read(script_dir.joinpath('config.ini'))
+    temp_dir = config['Paths']['temp_dir']
+
+    # Replace all occurrences of ${TEMP_DIR} with the actual path
+    for key, value in params.items():
+        if isinstance(value, dict):  # nested dictionary
+            for sub_key, sub_value in value.items():
+                if isinstance(sub_value, str) and '${TEMP_DIR}' in sub_value:
+                    value[sub_key] = sub_value.replace('${TEMP_DIR}', temp_dir)
+        elif isinstance(value, str) and '${TEMP_DIR}' in value:
+            params[key] = value.replace('${TEMP_DIR}', temp_dir)
 
     # centerline
     print_message("Starting centerline")

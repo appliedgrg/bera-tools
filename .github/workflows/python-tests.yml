@@ -33,7 +33,6 @@ jobs:
 
       - name: Activate Conda Environment and Run Tests
         run: |
-          # Explicitly load Conda to ensure `conda activate` works
           source ~/.bashrc  
           conda activate bera
           pytest tests/test_workflow.py --maxfail=1 --disable-warnings -s -v 
