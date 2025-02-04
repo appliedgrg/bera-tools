@@ -86,16 +86,16 @@ if __name__ == '__main__':
     # Read config.ini to get the base directory
     config = configparser.ConfigParser()
     config.read(script_dir.joinpath('config.ini'))
-    temp_dir = config['Paths']['temp_dir']
+    data_dir = config['Paths']['DATA_DIR']
 
-    # Replace all occurrences of ${TEMP_DIR} with the actual path
+    # Replace all occurrences of ${DATA_DIR} with the actual path
     for key, value in params.items():
         if isinstance(value, dict):  # nested dictionary
             for sub_key, sub_value in value.items():
-                if isinstance(sub_value, str) and '${TEMP_DIR}' in sub_value:
-                    value[sub_key] = sub_value.replace('${TEMP_DIR}', temp_dir)
-        elif isinstance(value, str) and '${TEMP_DIR}' in value:
-            params[key] = value.replace('${TEMP_DIR}', temp_dir)
+                if isinstance(sub_value, str) and '${DATA_DIR}' in sub_value:
+                    value[sub_key] = sub_value.replace('${DATA_DIR}', data_dir)
+        elif isinstance(value, str) and '${DATA_DIR}' in value:
+            params[key] = value.replace('${DATA_DIR}', data_dir)
 
     # centerline
     print_message("Starting centerline")

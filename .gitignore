@@ -1,3 +1,4 @@
+__pycache__
 /.idea
 /.vscode
 /.spyproject
@@ -6,10 +7,8 @@
 /beratools/gui/icons/grass
 /dist
 /output
-__pycache__
-notebooks/params_hpc.yml
-notebooks/params_win.yml
-notebooks/full_workflow.slurm
+
+*.slurm
 *.pyc
 *.whl
 .project
@@ -17,11 +16,8 @@ notebooks/full_workflow.slurm
 
 local.env
 .env
+config.ini
 
-# pixi environments
 .pixi
 *.egg-info
 pixi.lock
-
-
-notebooks/config.ini
