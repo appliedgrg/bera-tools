@@ -1,8 +1,9 @@
-from dask.distributed import Client, progress
+"""Script to run a simple example with Dask."""
+import argparse
 import time
 from datetime import datetime
-import argparse
 
+from dask.distributed import Client, progress
 
 parser = argparse.ArgumentParser(description="A simple example script")
 parser.add_argument('repetitions', type=int)
