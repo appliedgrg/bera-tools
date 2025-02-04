@@ -36,4 +36,4 @@ jobs:
           # Explicitly load Conda to ensure `conda activate` works
           source ~/.bashrc  
           conda activate bera
-          pytest tests/test_workflow.py --maxfail=1 --disable-warnings -v 
+          pytest tests/test_workflow.py --maxfail=1 --disable-warnings -s -v 
