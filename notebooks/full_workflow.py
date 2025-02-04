@@ -8,7 +8,6 @@ usage:
 import argparse
 import configparser
 import os
-import platform
 import sys
 from pathlib import Path
 from pprint import pprint
@@ -64,25 +63,19 @@ def print_message(message):
 
 if __name__ == '__main__':
     script_dir = Path(__file__).parent
-
     args = check_arguments()
-    platform = platform.system()
 
     # Access the parameters
     yml_file = args.file
 
-    # Set default file based on platform if not provided
+    # Set default file
     if not yml_file:
-        if platform == 'Linux':
-            yml_file = script_dir.joinpath('params_hpc.yml')
-        elif platform == 'Windows':
-            yml_file = script_dir.joinpath('params_win.yml')
+        yml_file = script_dir.joinpath('params_config.yml')
 
     # Get available CPU cores
     processes = os.cpu_count()
 
     # Print the received arguments (you can replace this with actual processing code)
-    print(f"Platform: {platform}")
     print(f"Cores: {processes}")
     print(f'Parallel mode: {PARALLEL_MODE.name}')
     print(f"Configuration file: {yml_file}")
