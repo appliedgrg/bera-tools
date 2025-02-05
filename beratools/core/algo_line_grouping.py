@@ -23,6 +23,7 @@ import numpy as np
 import shapely
 import shapely.geometry as sh_geom
 
+import beratools.core.constants as bt_const
 from beratools.core.algo_merge_lines import MergeLines
 
 TRIMMING_EFFECT_AREA = 50  # meters
@@ -424,6 +425,13 @@ class LineGrouping:
             if len(s_list) > 1:
                 for j in s_list:
                     if j != i:
+                        # some short line will be very close to each other
+                        if (
+                            vertex.vertex.distance(self.vertex_list[j].vertex)
+                            > bt_const.SMALL_BUFFER
+                        ):
+                            continue
+
                         vertex.merge(self.vertex_list[j])
                         vertex_visited[j] = True
 
