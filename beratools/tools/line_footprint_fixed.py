@@ -286,6 +286,11 @@ def line_footprint_fixed(
     lg.run_grouping()
     merged_line_gdf = LineGrouping.run_line_merge(line_gdf)
 
+    # check validity
+    merged_line_gdf = merged_line_gdf[
+        ~merged_line_gdf.geometry.isna() & ~merged_line_gdf.geometry.is_empty
+    ]
+
     line_args = prepare_line_args(merged_line_gdf, poly_gdf, n_samples, offset)
     del poly_gdf
 
