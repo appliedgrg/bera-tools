@@ -275,16 +275,25 @@ def line_footprint_fixed(
     parallel_mode=bt_const.PARALLEL_MODE,
     in_layer=None,
     in_layer_fp=None,
-    out_layer=None
+    out_layer=None,
+    merge_group=True
 ):
     n_samples = int(n_samples)
     offset = float(offset)
+
+    # TODO: refactor this code for better line quality check
     line_gdf = gpd.read_file(in_line, layer=in_layer)
+    line_gdf = line_gdf[
+        ~line_gdf.geometry.isna()
+        & ~line_gdf.geometry.is_empty
+    ]
+    line_gdf = line_gdf[line_gdf.geometry.length > bt_const.SMALL_BUFFER]
+
     poly_gdf = gpd.read_file(in_footprint, layer=in_layer_fp)
 
-    lg = LineGrouping(line_gdf)
+    lg = LineGrouping(line_gdf, merge_group)
     lg.run_grouping()
-    merged_line_gdf = LineGrouping.run_line_merge(line_gdf)
+    merged_line_gdf = lg.run_line_merge(line_gdf)
 
     # check validity
     merged_line_gdf = merged_line_gdf[
@@ -298,6 +307,25 @@ def line_footprint_fixed(
         process_single_line, line_args, "Fixed footprint", processes, mode=parallel_mode
     )
     line_attr = pd.concat(out_lines)
+
+    ############################################
+    # update avg_width and max_width by max value of group
+    group_max = line_attr.groupby('group').agg({
+        'avg_width': 'max',
+        'max_width': 'max'
+    }).reset_index()
+
+    # Step 2: Merge the result back to the original dataframe based on 'group'
+    line_attr = line_attr.merge(group_max, on='group', suffixes=('', '_max'))
+
+    # Step 3: Overwrite the original columns directly with the max values
+    line_attr['avg_width'] = line_attr['avg_width_max']
+    line_attr['max_width'] = line_attr['max_width_max']
+
+    # Drop the temporary max columns
+    line_attr.drop(columns=['avg_width_max', 'max_width_max'], inplace=True)
+    # Done: updating avg_width and max_width
+    ############################################
 
     # create fixed width footprint
     buffer_gdf = generate_fixed_width_footprint(line_attr, max_width=max_width)

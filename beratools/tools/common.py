@@ -193,9 +193,9 @@ def check_arguments():
 
     verbose = True if args.verbose == "True" else False
     for item in args.input:
-        if args.input[item] == "false":
+        if args.input[item].lower() == "false":
             args.input[item] = False
-        elif args.input[item] == "true":
+        elif args.input[item].lower() == "true":
             args.input[item] = True
 
     return args, verbose

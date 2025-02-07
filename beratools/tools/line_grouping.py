@@ -22,7 +22,9 @@ from beratools.core.algo_line_grouping import LineGrouping
 from beratools.core.logger import Logger
 
 
-def line_grouping(callback, in_line, out_line, processes, verbose, in_layer=None, out_layer=None):
+def line_grouping(
+    callback, in_line, out_line, processes, verbose, in_layer=None, out_layer=None
+):
     print("line_grouping started")
     in_line_gdf = gpd.read_file(in_line, layer=in_layer)
     lg = LineGrouping(in_line_gdf)

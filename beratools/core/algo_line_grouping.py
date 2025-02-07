@@ -278,7 +278,6 @@ class VertexNode:
 
     def has_group_attr(self):
         """If all values in group list are valid value, return True."""
-
         # TODO: if some line has no group, give advice
         for i in self.line_list:
             if i.group is None:
@@ -365,13 +364,14 @@ class VertexNode:
 class LineGrouping:
     """Class to group lines and merge them."""
     
-    def __init__(self, in_line_gdf) -> None:
+    def __init__(self, in_line_gdf, merge_group=True) -> None:
         # remove empty and null geometry
         self.lines = in_line_gdf.copy()
         self.lines = self.lines[
             ~self.lines.geometry.isna() & ~self.lines.geometry.is_empty
         ]
         self.lines.reset_index(inplace=True, drop=True)
+        self.merge_group = merge_group
 
         self.sim_geom = self.lines.simplify(1)
 
@@ -534,9 +534,11 @@ class LineGrouping:
         self.run_line_merge_trimmed()
         self.check_geom_validity()
 
-    @staticmethod
-    def run_line_merge(in_line_gdf):
-        out_line_gdf = in_line_gdf.dissolve(by=GROUP_ATTRIBUTE, as_index=False)
+    def run_line_merge(self, in_line_gdf):
+        out_line_gdf = in_line_gdf
+        if self.merge_group:
+            out_line_gdf = in_line_gdf.dissolve(by=GROUP_ATTRIBUTE, as_index=False)
+
         out_line_gdf.geometry = out_line_gdf.line_merge()
 
         for row in out_line_gdf.itertuples():
