@@ -1,22 +1,22 @@
 args_centerline:
-  in_line: ${DATA_DIR}/seed_lines.gpkg
-  in_layer: seed_lines
-  in_raster: ${DATA_DIR}/CHM.tif
-  line_radius: 15
-  proc_segments: True
-  out_line: ${DATA_DIR}/centerline.gpkg
-  out_layer: centerline
-  verbose: false
+    in_line: ${DATA_DIR}/seed_lines.gpkg
+    in_layer: seed_lines
+    in_raster: ${DATA_DIR}/CHM.tif
+    line_radius: 15
+    proc_segments: True
+    out_line: ${DATA_DIR}/centerline.gpkg
+    out_layer: centerline
+    verbose: false
 
 args_footprint_abs:
-  in_line: ${DATA_DIR}/centerline.gpkg
-  in_chm: ${DATA_DIR}/CHM.tif
-  corridor_thresh: 3.0
-  max_ln_width: 32.0
-  exp_shk_cell: 0
-  out_footprint: ${DATA_DIR}/footprint_abs.gpkg
-  out_layer: footprint_abs
-  verbose: false
+    in_line: ${DATA_DIR}/centerline.gpkg
+    in_chm: ${DATA_DIR}/CHM.tif
+    corridor_thresh: 3.0
+    max_ln_width: 32.0
+    exp_shk_cell: 0
+    out_footprint: ${DATA_DIR}/footprint_abs.gpkg
+    out_layer: footprint_abs
+    verbose: false
 
 args_footprint_rel:
     in_line: ${DATA_DIR}/centerline.gpkg
@@ -33,13 +33,13 @@ args_footprint_rel:
     verbose: false
 
 args_footprint_fixed:
-  in_line: ${DATA_DIR}/centerline.gpkg
-  in_footprint: ${DATA_DIR}/footprint_rel.gpkg
-  in_layer: centerline
-  in_layer_fp: footprint_rel
-  n_samples: 15
-  offset: 30
-  max_width: True
-  out_footprint: ${DATA_DIR}/footprint_final.gpkg
-  out_layer: footprint_fixed
-  verbose: false
+    in_line: ${DATA_DIR}/centerline.gpkg
+    in_footprint: ${DATA_DIR}/footprint_rel.gpkg
+    in_layer: centerline
+    in_layer_fp: footprint_rel
+    n_samples: 15
+    offset: 30
+    max_width: True
+    out_footprint: ${DATA_DIR}/footprint_final.gpkg
+    out_layer: footprint_fixed
+    verbose: false
