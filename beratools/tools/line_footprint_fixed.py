@@ -117,8 +117,10 @@ def process_single_line(line_arg):
     q3_width = FP_FIXED_WIDTH_DEFAULT
     q4_width = FP_FIXED_WIDTH_DEFAULT
     try:
-        q3_width = np.percentile(widths, 40)
-        q4_width = np.percentile(widths, 90)
+        # TODO: check the code. widths is empty
+        if len(widths) > 0:
+            q3_width = np.percentile(widths, 40)
+            q4_width = np.percentile(widths, 90)
     except Exception as e:
         print(e)
 
