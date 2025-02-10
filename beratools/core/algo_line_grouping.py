@@ -48,6 +48,7 @@ CONCERN_CLASSES = (
     VertexClass.FIVE_WAY_TWO_PRIMARY_LINE,
     VertexClass.FOUR_WAY_ZERO_PRIMARY_LINE,
     VertexClass.FOUR_WAY_ONE_PRIMARY_LINE,
+    VertexClass.FOUR_WAY_TWO_PRIMARY_LINE,
     VertexClass.THREE_WAY_ZERO_PRIMARY_LINE,
     VertexClass.THREE_WAY_ONE_PRIMARY_LINE,
     VertexClass.TWO_WAY_ZERO_PRIMARY_LINE,
@@ -163,6 +164,10 @@ class VertexNode:
             if line.line_id == line_id:
                 return line
 
+    def get_all_line_ids(self):
+        all_line_ids = {i.line_id for i in self.line_list}
+        return all_line_ids
+
     def update_line(self, line_id, line):
         for i in self.line_list:
             if i.line_id == line_id:
@@ -172,7 +177,7 @@ class VertexNode:
         """Merge other VertexNode if they have same vertex coords."""
         self.add_line(vertex.line_list[0])
 
-    def trim_end(self, idx, poly):
+    def trim_end(self, poly):
         internal_line = None
         for line_idx in self.line_not_connected:
             line = self.get_line_obj(line_idx)
@@ -203,7 +208,7 @@ class VertexNode:
         else:
             poly = split_poly.geoms[1]
 
-        return idx, poly
+        return poly
 
     def trim_intersection(self, polys):
         """Trim intersection of lines and polygons."""
@@ -288,7 +293,7 @@ class VertexNode:
     def need_regrouping(self):
         pass
 
-    def check_connectivity(self):
+    def check_connectivity(self, merge_group=True):
         # TODO add regrouping when new lines are added
         if self.has_group_attr():
             if self.need_regrouping():
@@ -299,8 +304,11 @@ class VertexNode:
             self.group_line_by_angle()
 
         # record line not connected
-        all_line_ids = {i.line_id for i in self.line_list}  # set of line id
-        self.line_not_connected = list(all_line_ids - set(chain(*self.line_connected)))
+        all_line_ids = self.get_all_line_ids()
+        if merge_group:
+            self.line_not_connected = list(all_line_ids - set(chain(*self.line_connected)))
+        else:
+            self.line_not_connected = list(all_line_ids)
 
         self.assign_vertex_class()
 
@@ -439,7 +447,7 @@ class LineGrouping:
             vertex_visited[i] = True
 
         for i in self.merged_vertex_list:
-            i.check_connectivity()
+            i.check_connectivity(self.merge_group)
 
         for i in self.merged_vertex_list:
             if i.line_connected:
@@ -489,14 +497,13 @@ class LineGrouping:
                 or vertex.vertex_class == VertexClass.FIVE_WAY_ZERO_PRIMARY_LINE
             ):
                 for idx, poly in polys.items():
-                    return_value = vertex.trim_end(idx, poly)
+                    return_value = vertex.trim_end(poly)
                     if return_value:
-                        out_idx = return_value[0]
-                        out_poly = return_value[1]
+                        out_poly = return_value
                     else:
                         continue
 
-                    self.polys.at[out_idx, "geometry"] = out_poly
+                    self.polys.at[idx, "geometry"] = out_poly
 
             else:
                 poly_trim_list = vertex.trim_intersection(polys)

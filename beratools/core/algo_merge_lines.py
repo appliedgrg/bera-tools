@@ -37,7 +37,7 @@ class MergeLines:
         self.line_segs = list(self.multi_line.geoms)
 
         # TODO: check empty line and null geoms
-        self.line_segs = [line for line in self.line_segs if line.length > 1e-3]  
+        self.line_segs = [line for line in self.line_segs if line.length > 1e-3]
         self.multi_line = MultiLineString(self.line_segs)
         m = mapping(self.multi_line)
         self.end = [(i[0], i[-1]) for i in m['coordinates']]

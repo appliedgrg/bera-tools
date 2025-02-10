@@ -3,7 +3,7 @@ args_centerline:
     in_layer: seed_lines
     in_raster: ${DATA_DIR}/CHM.tif
     line_radius: 15
-    proc_segments: True
+    proc_segments: true
     out_line: ${DATA_DIR}/centerline.gpkg
     out_layer: centerline
     verbose: false
@@ -39,7 +39,8 @@ args_footprint_fixed:
     in_layer_fp: footprint_rel
     n_samples: 15
     offset: 30
-    max_width: True
+    max_width: true
     out_footprint: ${DATA_DIR}/footprint_final.gpkg
     out_layer: footprint_fixed
     verbose: false
+    merge_group: false
