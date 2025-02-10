@@ -177,6 +177,22 @@ class VertexNode:
         """Merge other VertexNode if they have same vertex coords."""
         self.add_line(vertex.line_list[0])
 
+    def trim_end_all(self, polys):
+        """
+        Trim all unconnected lines in the vertex.
+
+        Args:
+        polys: list of polygons returned by sindex.query
+
+        """
+        new_polys = []
+        for idx, poly in polys.items():
+            out_poly = self.trim_end(poly)
+            if out_poly:
+                new_polys.append((idx, out_poly))
+
+        return new_polys
+    
     def trim_end(self, poly):
         internal_line = None
         for line_idx in self.line_not_connected:
@@ -293,7 +309,7 @@ class VertexNode:
     def need_regrouping(self):
         pass
 
-    def check_connectivity(self, merge_group=True):
+    def check_connectivity(self):
         # TODO add regrouping when new lines are added
         if self.has_group_attr():
             if self.need_regrouping():
@@ -305,10 +321,7 @@ class VertexNode:
 
         # record line not connected
         all_line_ids = self.get_all_line_ids()
-        if merge_group:
-            self.line_not_connected = list(all_line_ids - set(chain(*self.line_connected)))
-        else:
-            self.line_not_connected = list(all_line_ids)
+        self.line_not_connected = list(all_line_ids - set(chain(*self.line_connected)))
 
         self.assign_vertex_class()
 
@@ -418,7 +431,7 @@ class LineGrouping:
 
         v_points = []
         for i in self.vertex_list:
-            v_points.append(i.vertex.buffer(SMALL_BUFFER))  # small polygon around vertices
+            v_points.append(i.vertex.buffer(SMALL_BUFFER))  # small polygon
 
         # Spatial index of all vertices
         self.v_index = shapely.STRtree(v_points)
@@ -447,7 +460,7 @@ class LineGrouping:
             vertex_visited[i] = True
 
         for i in self.merged_vertex_list:
-            i.check_connectivity(self.merge_group)
+            i.check_connectivity()
 
         for i in self.merged_vertex_list:
             if i.line_connected:
@@ -496,13 +509,18 @@ class LineGrouping:
                 or vertex.vertex_class == VertexClass.FOUR_WAY_ZERO_PRIMARY_LINE
                 or vertex.vertex_class == VertexClass.FIVE_WAY_ZERO_PRIMARY_LINE
             ):
-                for idx, poly in polys.items():
-                    return_value = vertex.trim_end(poly)
-                    if return_value:
-                        out_poly = return_value
-                    else:
-                        continue
-
+                # for idx, poly in polys.items():
+                #     return_value = vertex.trim_end(poly)
+                #     if return_value:
+                #         out_poly = return_value
+                #     else:
+                #         continue
+                out_polys = vertex.trim_end_all(polys)
+                if len(out_polys) == 0:
+                    continue
+                
+                # update polygon DataFrame
+                for idx, out_poly in out_polys:
                     self.polys.at[idx, "geometry"] = out_poly
 
             else:
