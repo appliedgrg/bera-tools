@@ -186,7 +186,7 @@ class VertexNode:
                 internal_line = line
 
         if not internal_line:
-            print("No line is retrieved")
+            # print("No line is retrieved")
             return
 
         split_poly = shapely.ops.split(poly, internal_line.end_transect())
@@ -305,15 +305,15 @@ class VertexNode:
 
         poly_primary = []
         for j, poly in polys.items():
-            if poly.contains(primary_lines[0]) or poly.contains(primary_lines[1]):
+            if(poly.buffer(SMALL_BUFFER).contains(primary_lines[0]) 
+               or poly.buffer(SMALL_BUFFER).contains(primary_lines[1])):
                 poly_primary.append(poly)
             else:
                 for trim in poly_trim_list:
                     # TODO: sometimes contains can not tolerance tiny error: 1e-11
                     # buffer polygon by 1 meter to make sure contains works
                     midpoint = trim.line_cleanup.interpolate(0.5, normalized=True)
-                    # if p.buffer(1).contains(trim.line_cleanup):
-                    if poly.buffer(1).contains(midpoint):
+                    if poly.buffer(SMALL_BUFFER).contains(midpoint):
                         trim.poly_cleanup = poly
                         trim.poly_index = j
 
