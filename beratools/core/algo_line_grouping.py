@@ -165,6 +165,9 @@ class VertexNode:
             if line.line_id == line_id:
                 return line
 
+    def get_line_geom(self, line_id):
+        return self.get_line_obj(line_id).line
+            
     def get_all_line_ids(self):
         all_line_ids = {i.line_id for i in self.line_list}
         return all_line_ids
@@ -178,7 +181,7 @@ class VertexNode:
         """Merge other VertexNode if they have same vertex coords."""
         self.add_line(vertex.line_list[0])
 
-    def _trim_polygon(self, poly, line_indices):
+    def get_trim_transect(self, poly, line_indices):
         internal_line = None
         for line_idx in line_indices:
             line = self.get_line_obj(line_idx)
@@ -188,8 +191,13 @@ class VertexNode:
         if not internal_line:
             # print("No line is retrieved")
             return
-
-        split_poly = shapely.ops.split(poly, internal_line.end_transect())
+        return internal_line.end_transect()
+    
+    def _trim_polygon(self, poly, trim_transect):
+        if not poly or not trim_transect:
+            return
+        
+        split_poly = shapely.ops.split(poly, trim_transect)
 
         if len(split_poly.geoms) != 2:
             return
@@ -228,68 +236,53 @@ class VertexNode:
         return new_polys
     
     def trim_end(self, poly):
-        poly = self._trim_polygon(poly, self.line_not_connected)
+        transect = self.get_trim_transect(poly, self.line_not_connected)
+        poly = self._trim_polygon(poly, transect)
         return poly
     
-        # internal_line = None
-        # for line_idx in self.line_not_connected:
-        #     line = self.get_line_obj(line_idx)
-        #     if poly.contains(line.midpoint()):
-        #         internal_line = line
-
-        # if not internal_line:
-        #     print("No line is retrieved")
-        #     return
-
-        # split_poly = shapely.ops.split(poly, internal_line.end_transect())
-
-        # if len(split_poly.geoms) != 2:
-        #     return
-
-        # # check geom_type
-        # none_poly = False
-        # for geom in split_poly.geoms:
-        #     if geom.geom_type != "Polygon":
-        #         none_poly = True
-
-        # if none_poly:
-        #     return
-
-        # # only two polygons in split_poly
-        # if split_poly.geoms[0].area > split_poly.geoms[1].area:
-        #     poly = split_poly.geoms[0]
-        # else:
-        #     poly = split_poly.geoms[1]
-
-        # return poly
-
-    def trim_primary_end(self, poly):
-        if len(self.line_connected) == 0:
-            return
-        
-        # flatten line_connected
-        line_indices = [idx for line in self.line_connected for idx in line]
-        poly = self._trim_polygon(poly, line_indices)
-
-        return poly
-
-    def trim_primary_end_all(self, polys):
+    def trim_primary_end(self, polys):
         """
-        Trim all unconnected lines in the vertex.
+        Trim first primary line in the vertex.
 
         Args:
         polys: list of polygons returned by sindex.query
 
         """
+        if len(self.line_connected) == 0:
+            return
+        
         new_polys = []
+        
+        line = self.line_connected[0]
+        # use the first line to get transect
+        transect = self.get_line_obj(line[0]).end_transect()
+        idx_1 = line[0]
+        poly_1 = None
+        idx_1 = line[1]
+        poly_2 = None
+
         for idx, poly in polys.items():
-            out_poly = self.trim_primary_end(poly)
-            if out_poly:
-                new_polys.append((idx, out_poly))
+            # TODO: no polygons
+            if not poly:
+                continue
+
+            if poly.buffer(SMALL_BUFFER).contains(self.get_line_geom(line[0])):
+                poly_1 = poly
+                idx_1 = idx
+            elif poly.buffer(SMALL_BUFFER).contains(self.get_line_geom(line[1])):
+                poly_2 = poly
+                idx_2 = idx
+
+        if poly_1:
+            poly_1 = self._trim_polygon(poly_1, transect)
+            new_polys.append((idx_1, poly_1))
+        if poly_2:
+            poly_2 = self._trim_polygon(poly_2, transect)
+            new_polys.append((idx_2, poly_2))
 
         return new_polys
     
-    def trim_intersection(self, polys):
+    def trim_intersection(self, polys, merge_group=True):
         """Trim intersection of lines and polygons."""
         poly_trim_list = []
         primary_lines = []
@@ -298,13 +291,22 @@ class VertexNode:
         for j in self.line_connected[0]:  # only one connected line is used
             primary_lines.append(self.get_line(j))
 
-        for j in self.line_not_connected:
+        line_idx_to_trim = self.line_not_connected
+        if not merge_group:  # add all remaining primary lines for trimming
+            if len(self.line_connected) > 1:
+                for line in self.line_connected[1:]:
+                    line_idx_to_trim.extend(line)
+
+        for j in line_idx_to_trim:
             trim = PolygonTrimming(line_index=j, line_cleanup=self.get_line(j))
 
             poly_trim_list.append(trim)
 
         poly_primary = []
         for j, poly in polys.items():
+            if not poly: # TODO: no polygon
+                continue
+
             if(poly.buffer(SMALL_BUFFER).contains(primary_lines[0]) 
                or poly.buffer(SMALL_BUFFER).contains(primary_lines[1])):
                 poly_primary.append(poly)
@@ -581,7 +583,7 @@ class LineGrouping:
                     self.polys.at[idx, "geometry"] = out_poly
 
             else:
-                poly_trim_list = vertex.trim_intersection(polys)
+                poly_trim_list = vertex.trim_intersection(polys, self.merge_group)
                 for p_trim in poly_trim_list:
                     # update main line and polygon DataFrame
                     self.polys.at[p_trim.poly_index, "geometry"] = p_trim.poly_cleanup
@@ -598,7 +600,7 @@ class LineGrouping:
                 or vertex.vertex_class == VertexClass.FOUR_WAY_TWO_PRIMARY_LINE
                 or vertex.vertex_class == VertexClass.THREE_WAY_ONE_PRIMARY_LINE):
 
-                out_polys = vertex.trim_primary_end_all(polys)
+                out_polys = vertex.trim_primary_end(polys)
                 if len(out_polys) == 0:
                     continue
                 
