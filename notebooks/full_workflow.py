@@ -2,7 +2,10 @@
 Provide a full workflow that runs the centerline, canopy and ground footprint tools.
 
 usage: 
-    python full_workflow.py [-f some.yml] [-m   PARALLEL_MODE]
+    python full_workflow.py [-f some.yml] [-p PARALLEL_MODE]
+
+    PARALLEL_MODE: MULTIPROCESSING = 2
+                   SLURM = 5
 """
 
 import argparse
@@ -12,12 +15,13 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
-sys.path.append(Path(__file__).resolve().parents[1].as_posix())
+# sys.path.append(Path(__file__).resolve().parents[1].as_posix())
+sys.path.append(r"C:\BERATools\bera-tools")
 
 import yaml
 
 from beratools.core.algo_footprint_rel import line_footprint_rel
-from beratools.core.constants import PARALLEL_MODE, ParallelMode
+from beratools.core.constants import ParallelMode
 from beratools.tools.centerline import centerline
 from beratools.tools.line_footprint_absolute import line_footprint_abs
 from beratools.tools.line_footprint_fixed import line_footprint_fixed
@@ -42,7 +46,7 @@ def check_arguments():
     )
 
     parser.add_argument(
-        '-m', '--multi', 
+        '-p', '--parallel', 
         type=int, 
         required=False,  # This makes the file parameter optional
         default=ParallelMode.MULTIPROCESSING,
@@ -74,10 +78,13 @@ if __name__ == '__main__':
 
     # Get available CPU cores
     processes = os.cpu_count()
+    parallel_mode= ParallelMode.MULTIPROCESSING
+    if args.parallel:
+        parallel_mode = args.parallel
 
     # Print the received arguments (you can replace this with actual processing code)
     print(f"Cores: {processes}")
-    print(f'Parallel mode: {PARALLEL_MODE.name}')
+    print(f'Parallel mode: {parallel_mode}')
     print(f"Configuration file: {yml_file}")
 
     with open(yml_file) as in_params:
@@ -101,20 +108,23 @@ if __name__ == '__main__':
     print_message("Starting centerline")
     args_centerline = params['args_centerline']
     args_centerline['processes'] = processes
+    args_centerline['parallel_mode'] = parallel_mode
     print(args_centerline)
     centerline(**args_centerline)
     
     # canopy footprint abs
-    print_message("Starting canopy footprint abs")
-    args_footprint_abs = params["args_footprint_abs"]
-    args_footprint_abs['processes'] = processes
-    print(args_footprint_abs)
-    line_footprint_abs(**args_footprint_abs)
+    # print_message("Starting canopy footprint abs")
+    # args_footprint_abs = params["args_footprint_abs"]
+    # args_footprint_abs['processes'] = processes
+    # args_footprint_abs['parallel_mode'] = parallel_mode
+    # print(args_footprint_abs)
+    # line_footprint_abs(**args_footprint_abs)
     
     # canopy footprint relative
     print_message("Starting canopy footprint rel")
     args_footprint_rel = params["args_footprint_rel"]
     args_footprint_rel['processes'] = processes
+    args_footprint_rel['parallel_mode'] = parallel_mode
     print(args_footprint_rel)
     line_footprint_rel(**args_footprint_rel)
 
@@ -122,5 +132,6 @@ if __name__ == '__main__':
     print_message("Starting ground footprint")
     args_footprint_fixed = params["args_footprint_fixed"]
     args_footprint_fixed['processes'] = processes
+    args_footprint_fixed['parallel_mode'] = parallel_mode
     print(args_footprint_fixed)
     line_footprint_fixed(**args_footprint_fixed)

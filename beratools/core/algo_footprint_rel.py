@@ -50,7 +50,7 @@ class FootprintCanopy:
             line = LineInfo(data.iloc[[idx]], in_chm)
             self.lines.append(line)
 
-    def compute(self, processes, parallel_mode=bt_const.PARALLEL_MODE):
+    def compute(self, processes, parallel_mode=bt_const.ParallelMode.MULTIPROCESSING):
         result = bt_base.execute_multiprocessing(
             algo_common.process_single_item,
             self.lines,
@@ -552,10 +552,11 @@ def line_footprint_rel(
     canopy_avoidance=0.0,
     exponent=1.0,
     canopy_thresh_percentage=50,
+    parallel_mode=bt_const.ParallelMode.MULTIPROCESSING,
 ):
     """Another version of relative canopy footprint tool."""
     footprint = FootprintCanopy(in_line, in_chm, in_layer)
-    footprint.compute(processes, bt_const.PARALLEL_MODE)
+    footprint.compute(processes, parallel_mode)
 
     # footprint.save_line_percentile(out_file_percentile)
     footprint.save_footprint(out_footprint, out_layer)

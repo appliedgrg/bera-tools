@@ -274,11 +274,11 @@ def line_footprint_fixed(
     out_footprint,
     processes,
     verbose,
-    parallel_mode=bt_const.PARALLEL_MODE,
     in_layer=None,
     in_layer_fp=None,
     out_layer=None,
-    merge_group=True
+    merge_group=True,
+    parallel_mode=bt_const.ParallelMode.MULTIPROCESSING
 ):
     n_samples = int(n_samples)
     offset = float(offset)
