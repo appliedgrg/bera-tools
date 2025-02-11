@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --partition=parallel
-#SBATCH --nodes=4                                     # node count
-#SBATCH --ntasks=4                                    # total number of tasks for oe node
-#SBATCH --cpus-per-task=12                             # cpu-cores per task (>1 if multi-threaded tasks)
-#SBATCH --mem-per-cpu=1900MB                          # memory per cpu-core (2G is default)
-#SBATCH --time=01:00:00                               # total run time limit (HH:MM:SS)
+#SBATCH --partition=legacy
+#SBATCH --nodes=4                        # node count
+#SBATCH --ntasks=48                      # total number of tasks for oe node
+#SBATCH --cpus-per-task=1                # cpu-cores per task (>1 if multi-threaded tasks)
+#SBATCH --mem-per-cpu=1900MB             # memory per cpu-core (2G is default)
+#SBATCH --time=01:00:00                  # total run time limit (HH:MM:SS)
 
 source ~/software/init-conda
 conda activate bera
@@ -23,4 +23,4 @@ srun --ntasks=1 --nodes=1 --exclusive dask scheduler --scheduler-file $SCHEDULER
 # Start the workers
 srun --ntasks=$NWORKERS --nodes=${NNODES} --exclusive  dask worker --scheduler-file $SCHEDULER_FILE --memory-limit $MEM_PER_WORKER &
 
-sleep $((240*60)) # 240 minutes, adjust to the walltime
+sleep $((240*60)) # 240 minutes, adjust to the wall time

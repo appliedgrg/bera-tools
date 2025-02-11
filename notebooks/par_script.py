@@ -17,7 +17,7 @@ def slow_increment(x):
     time.sleep(1)
     return x + 1, str(datetime.now())
 
-futures = client.map(slow_increment, range(34*repetitions))
+futures = client.map(slow_increment, range(46*repetitions))
 progress(futures)
 
 toc = time.time()
