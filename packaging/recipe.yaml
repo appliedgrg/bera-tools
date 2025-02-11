@@ -2,16 +2,16 @@ schema_version: 1
 
 context:
   name: BERATools
-  version: 0.2.1
+  version: 0.3.0
 
 package:
   name: ${{ name|lower }}
   version: ${{ version }}
 
 source:
-  git: https://github.com/RichardQZeng/BTools.git
-  # tag: 0.2.1
-  rev: 0144cd52cad0ec9c7c1d89e7dbae5dd71488bddc
+  git: https://github.com/appliedgrg/bera-tools.git
+  # tag: 0.3.0
+  rev: 741acd08a508dd99af31513f16ddb297ff2f1bc8
 
 build:
   number: 0
@@ -25,6 +25,7 @@ requirements:
   host:
     - python >=3.9
     - hatchling
+    - pip
   run:
     - python >=3.9
     - bera_centerlines
@@ -49,6 +50,7 @@ requirements:
     - scikit-image
     - tqdm
     - xarray-spatial
+    - pip
 
 tests:
   - script:
@@ -71,7 +73,7 @@ about:
   license: MIT
   license_file:
     - LICENSE
-  homepage: https://github.com/RichardQZeng/BTools.git
+  homepage: https://github.com/appliedgrg/bera-tools.git
 
 extra:
   recipe-maintainers:
