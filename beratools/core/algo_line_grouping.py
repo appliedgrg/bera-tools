@@ -186,6 +186,9 @@ class VertexNode:
         self.add_line(vertex.line_list[0])
 
     def get_trim_transect(self, poly, line_indices):
+        if not poly:
+            return None
+        
         internal_line = None
         for line_idx in line_indices:
             line = self.get_line_obj(line_idx)
@@ -241,6 +244,9 @@ class VertexNode:
     
     def trim_end(self, poly):
         transect = self.get_trim_transect(poly, self.line_not_connected)
+        if not transect:
+            return
+        
         poly = self._trim_polygon(poly, transect)
         return poly
     
