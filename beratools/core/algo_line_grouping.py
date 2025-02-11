@@ -31,6 +31,8 @@ SMALL_BUFFER = 1
 
 @enum.unique
 class VertexClass(enum.IntEnum):
+    """Enum class for vertex class."""
+
     TWO_WAY_ZERO_PRIMARY_LINE = 1
     THREE_WAY_ZERO_PRIMARY_LINE = 2
     THREE_WAY_ONE_PRIMARY_LINE = 3
@@ -104,6 +106,8 @@ def get_angle(line, end_index):
 
 @dataclass
 class SingleLine:
+    """Class to store line and its simplified line."""
+    
     line_id: int = field(default=0)
     line: Union[sh_geom.LineString, sh_geom.MultiLineString] = field(default=None)
     sim_line: Union[sh_geom.LineString, sh_geom.MultiLineString] = field(default=None)
@@ -134,7 +138,7 @@ class SingleLine:
 
 
 class VertexNode:
-    """ """
+    """Class to store vertex and lines connected to it."""
 
     def __init__(self, line_id, line, sim_line, vertex_index, group=None) -> None:
         self.vertex = None
@@ -566,6 +570,21 @@ class LineGrouping:
                 continue
 
             polys = self.polys.loc[s_idx].geometry
+            
+            #  Trim intersections of primary lines
+            if (vertex.vertex_class == VertexClass.FIVE_WAY_TWO_PRIMARY_LINE
+                or vertex.vertex_class == VertexClass.FIVE_WAY_ONE_PRIMARY_LINE
+                or vertex.vertex_class == VertexClass.FOUR_WAY_ONE_PRIMARY_LINE
+                or vertex.vertex_class == VertexClass.FOUR_WAY_TWO_PRIMARY_LINE
+                or vertex.vertex_class == VertexClass.THREE_WAY_ONE_PRIMARY_LINE):
+
+                out_polys = vertex.trim_primary_end(polys)
+                if len(out_polys) == 0:
+                    continue
+                
+                # update polygon DataFrame
+                for idx, out_poly in out_polys:
+                    self.polys.at[idx, "geometry"] = out_poly
 
             if (
                 vertex.vertex_class == VertexClass.SINGLE_WAY
@@ -592,21 +611,6 @@ class LineGrouping:
                     self.update_line_in_vertex_node(
                         p_trim.line_index, p_trim.line_cleanup
                     )
-            
-            #  Trim intersections of primary lines
-            if (vertex.vertex_class == VertexClass.FIVE_WAY_TWO_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FIVE_WAY_ONE_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FOUR_WAY_ONE_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FOUR_WAY_TWO_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.THREE_WAY_ONE_PRIMARY_LINE):
-
-                out_polys = vertex.trim_primary_end(polys)
-                if len(out_polys) == 0:
-                    continue
-                
-                # update polygon DataFrame
-                for idx, out_poly in out_polys:
-                    self.polys.at[idx, "geometry"] = out_poly
 
     def get_merged_lines_original(self):
         return self.lines.dissolve(by=GROUP_ATTRIBUTE)
