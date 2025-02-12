@@ -15,10 +15,10 @@ import sys
 from pathlib import Path
 from pprint import pprint
 
-# sys.path.append(Path(__file__).resolve().parents[1].as_posix())
-sys.path.append(r"C:\BERATools\bera-tools")
+sys.path.append(Path(__file__).resolve().parents[1].as_posix())
 
 import yaml
+from split_with_lines_class import split_with_lines
 
 from beratools.core.algo_footprint_rel import line_footprint_rel
 from beratools.core.constants import ParallelMode
@@ -105,12 +105,12 @@ if __name__ == '__main__':
             params[key] = value.replace('${DATA_DIR}', data_dir)
 
     # centerline
-    print_message("Starting centerline")
-    args_centerline = params['args_centerline']
-    args_centerline['processes'] = processes
-    args_centerline['parallel_mode'] = parallel_mode
-    print(args_centerline)
-    centerline(**args_centerline)
+    # print_message("Starting centerline")
+    # args_centerline = params['args_centerline']
+    # args_centerline['processes'] = processes
+    # args_centerline['parallel_mode'] = parallel_mode
+    # print(args_centerline)
+    # centerline(**args_centerline)
     
     # canopy footprint abs
     # print_message("Starting canopy footprint abs")
@@ -121,17 +121,31 @@ if __name__ == '__main__':
     # line_footprint_abs(**args_footprint_abs)
     
     # canopy footprint relative
-    print_message("Starting canopy footprint rel")
-    args_footprint_rel = params["args_footprint_rel"]
-    args_footprint_rel['processes'] = processes
-    args_footprint_rel['parallel_mode'] = parallel_mode
-    print(args_footprint_rel)
-    line_footprint_rel(**args_footprint_rel)
+    # print_message("Starting canopy footprint rel")
+    # args_footprint_rel = params["args_footprint_rel"]
+    # args_footprint_rel['processes'] = processes
+    # args_footprint_rel['parallel_mode'] = parallel_mode
+    # print(args_footprint_rel)
+    # line_footprint_rel(**args_footprint_rel)
 
-    # ground footprint
-    print_message("Starting ground footprint")
-    args_footprint_fixed = params["args_footprint_fixed"]
-    args_footprint_fixed['processes'] = processes
-    args_footprint_fixed['parallel_mode'] = parallel_mode
-    print(args_footprint_fixed)
-    line_footprint_fixed(**args_footprint_fixed)
+    # ground footprint (grouped)
+    # print_message("Starting ground footprint fixed")
+    # args_footprint_fixed = params["args_footprint_fixed"]
+    # args_footprint_fixed['processes'] = processes
+    # args_footprint_fixed['parallel_mode'] = parallel_mode
+    # print(args_footprint_fixed)
+    # line_footprint_fixed(**args_footprint_fixed)
+
+    # Split with lines
+    # print_message("Splitting lines")
+    # args_split_lines = params["args_split_lines"]
+    # print(args_split_lines)
+    # split_with_lines(**args_split_lines)
+
+    # ground footprint (intersection)
+    print_message("Starting ground footprint intersection")
+    args_footprint_inter = params["args_footprint_inter"]
+    args_footprint_inter['processes'] = processes
+    args_footprint_inter['parallel_mode'] = parallel_mode
+    print(args_footprint_inter)
+    line_footprint_fixed(**args_footprint_inter)
