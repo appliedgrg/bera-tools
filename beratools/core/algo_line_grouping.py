@@ -61,8 +61,8 @@ CONCERN_CLASSES = (
 ANGLE_TOLERANCE = np.pi / 10
 TURN_ANGLE_TOLERANCE = np.pi * 0.5  # (little bigger than right angle)
 GROUP_ATTRIBUTE = "group"
-TRIM_THRESHOLD = 0.05
-TRANSECT_LENGTH = 20
+TRIM_THRESHOLD = 0.15
+TRANSECT_LENGTH = 30
 
 
 def points_in_line(line):
@@ -578,19 +578,20 @@ class LineGrouping:
             polys = self.polys.loc[s_idx].geometry
             
             #  Trim intersections of primary lines
-            if (vertex.vertex_class == VertexClass.FIVE_WAY_TWO_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FIVE_WAY_ONE_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FOUR_WAY_ONE_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.FOUR_WAY_TWO_PRIMARY_LINE
-                or vertex.vertex_class == VertexClass.THREE_WAY_ONE_PRIMARY_LINE):
+            if not self.merge_group:
+                if (vertex.vertex_class == VertexClass.FIVE_WAY_TWO_PRIMARY_LINE
+                    or vertex.vertex_class == VertexClass.FIVE_WAY_ONE_PRIMARY_LINE
+                    or vertex.vertex_class == VertexClass.FOUR_WAY_ONE_PRIMARY_LINE
+                    or vertex.vertex_class == VertexClass.FOUR_WAY_TWO_PRIMARY_LINE
+                    or vertex.vertex_class == VertexClass.THREE_WAY_ONE_PRIMARY_LINE):
 
-                out_polys = vertex.trim_primary_end(polys)
-                if len(out_polys) == 0:
-                    continue
-                
-                # update polygon DataFrame
-                for idx, out_poly in out_polys:
-                    self.polys.at[idx, "geometry"] = out_poly
+                    out_polys = vertex.trim_primary_end(polys)
+                    if len(out_polys) == 0:
+                        continue
+                    
+                    # update polygon DataFrame
+                    for idx, out_poly in out_polys:
+                        self.polys.at[idx, "geometry"] = out_poly
 
             if (
                 vertex.vertex_class == VertexClass.SINGLE_WAY

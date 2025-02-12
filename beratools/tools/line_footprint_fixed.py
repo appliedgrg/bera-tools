@@ -285,7 +285,9 @@ def line_footprint_fixed(
 
     # TODO: refactor this code for better line quality check
     line_gdf = gpd.read_file(in_line, layer=in_layer)
-    line_gdf.geometry = line_gdf.line_merge()
+    if not merge_group:
+        line_gdf.geometry = line_gdf.line_merge()
+        
     line_gdf = line_gdf[
         ~line_gdf.geometry.isna()
         & ~line_gdf.geometry.is_empty
