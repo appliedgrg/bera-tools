@@ -43,4 +43,21 @@ args_footprint_fixed:
     out_footprint: ${DATA_DIR}/footprint_final.gpkg
     out_layer: footprint_fixed
     verbose: false
+    merge_group: true
+
+args_split_lines:
+    input_gpkg: ${DATA_DIR}/footprint_final.gpkg
+    layer_name: merged_lines_original
+
+args_footprint_inter:
+    in_line: ${DATA_DIR}/footprint_final.gpkg
+    in_footprint: ${DATA_DIR}/footprint_rel.gpkg
+    in_layer: split_lines_selected
+    in_layer_fp: footprint_rel
+    n_samples: 15
+    offset: 30
+    max_width: true
+    out_footprint: ${DATA_DIR}/footprint_intersection.gpkg
+    out_layer: clean_footprint
+    verbose: false
     merge_group: false
