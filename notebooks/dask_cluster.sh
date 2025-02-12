@@ -7,7 +7,7 @@
 #SBATCH --time=01:00:00                  # total run time limit (HH:MM:SS)
 
 source ~/software/init-conda
-conda activate bera
+conda activate data
 
 set -x
 
