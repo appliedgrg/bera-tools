@@ -62,7 +62,7 @@ ANGLE_TOLERANCE = np.pi / 10
 TURN_ANGLE_TOLERANCE = np.pi * 0.5  # (little bigger than right angle)
 GROUP_ATTRIBUTE = "group"
 TRIM_THRESHOLD = 0.15
-TRANSECT_LENGTH = 30
+TRANSECT_LENGTH = 35
 
 
 def points_in_line(line):
@@ -591,7 +591,8 @@ class LineGrouping:
                     
                     # update polygon DataFrame
                     for idx, out_poly in out_polys:
-                        self.polys.at[idx, "geometry"] = out_poly
+                        if out_poly:
+                            self.polys.at[idx, "geometry"] = out_poly
 
             if (
                 vertex.vertex_class == VertexClass.SINGLE_WAY
