@@ -105,12 +105,12 @@ if __name__ == '__main__':
             params[key] = value.replace('${DATA_DIR}', data_dir)
 
     # centerline
-    # print_message("Starting centerline")
-    # args_centerline = params['args_centerline']
-    # args_centerline['processes'] = processes
-    # args_centerline['parallel_mode'] = parallel_mode
-    # print(args_centerline)
-    # centerline(**args_centerline)
+    print_message("Starting centerline")
+    args_centerline = params['args_centerline']
+    args_centerline['processes'] = processes
+    args_centerline['parallel_mode'] = parallel_mode
+    print(args_centerline)
+    centerline(**args_centerline)
     
     # canopy footprint abs
     # print_message("Starting canopy footprint abs")
@@ -121,20 +121,20 @@ if __name__ == '__main__':
     # line_footprint_abs(**args_footprint_abs)
     
     # canopy footprint relative
-    # print_message("Starting canopy footprint rel")
-    # args_footprint_rel = params["args_footprint_rel"]
-    # args_footprint_rel['processes'] = processes
-    # args_footprint_rel['parallel_mode'] = parallel_mode
-    # print(args_footprint_rel)
-    # line_footprint_rel(**args_footprint_rel)
+    print_message("Starting canopy footprint rel")
+    args_footprint_rel = params["args_footprint_rel"]
+    args_footprint_rel['processes'] = processes
+    args_footprint_rel['parallel_mode'] = parallel_mode
+    print(args_footprint_rel)
+    line_footprint_rel(**args_footprint_rel)
 
     # ground footprint (grouped)
-    # print_message("Starting ground footprint fixed")
-    # args_footprint_fixed = params["args_footprint_fixed"]
-    # args_footprint_fixed['processes'] = processes
-    # args_footprint_fixed['parallel_mode'] = parallel_mode
-    # print(args_footprint_fixed)
-    # line_footprint_fixed(**args_footprint_fixed)
+    print_message("Starting ground footprint fixed")
+    args_footprint_fixed = params["args_footprint_fixed"]
+    args_footprint_fixed['processes'] = processes
+    args_footprint_fixed['parallel_mode'] = parallel_mode
+    print(args_footprint_fixed)
+    line_footprint_fixed(**args_footprint_fixed)
 
     # Split with lines
     # print_message("Splitting lines")
@@ -144,8 +144,8 @@ if __name__ == '__main__':
 
     # ground footprint (intersection)
     print_message("Starting ground footprint intersection")
-    args_footprint_inter = params["args_footprint_inter"]
-    args_footprint_inter['processes'] = processes
-    args_footprint_inter['parallel_mode'] = parallel_mode
-    print(args_footprint_inter)
-    line_footprint_fixed(**args_footprint_inter)
+    # args_footprint_inter = params["args_footprint_inter"]
+    # args_footprint_inter['processes'] = processes
+    # args_footprint_inter['parallel_mode'] = parallel_mode
+    # print(args_footprint_inter)
+    # line_footprint_fixed(**args_footprint_inter)
