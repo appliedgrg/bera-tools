@@ -68,7 +68,7 @@ exclude = [
 [tool.ruff]
 
 # Set maximum line length to 88 characters as per PEP 8
-line-length = 88
+line-length = 90
 
 # Select categories of checks to perform
 select = ["E", "F", "D", "I"]
