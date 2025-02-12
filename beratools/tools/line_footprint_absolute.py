@@ -24,6 +24,7 @@ import shapely
 import beratools.core.algo_centerline as algo_cl
 import beratools.core.algo_common as algo_common
 import beratools.core.algo_cost as algo_cost
+import beratools.core.constants as bt_const
 import beratools.core.tool_base as bt_base
 import beratools.tools.common as bt_common
 
@@ -170,6 +171,7 @@ def line_footprint_abs(
     verbose,
     in_layer=None,
     out_layer=None,
+    parallel_mode=bt_const.ParallelMode.MULTIPROCESSING
 ):
     max_ln_width = float(max_ln_width)
     exp_shk_cell = int(exp_shk_cell)
