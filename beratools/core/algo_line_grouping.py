@@ -250,7 +250,41 @@ class VertexNode:
         
         poly = self._trim_polygon(poly, transect)
         return poly
+            # Helper to get the neighbor coordinate based on vertex_index.
     
+    @staticmethod
+    def get_neighbor(line_obj):
+            coords = list(line_obj.line.coords)
+            if line_obj.vertex_index == 0 and len(coords) >= 2:
+                return sh_geom.Point(coords[1])
+            elif line_obj.vertex_index == -1 and len(coords) >= 2:
+                return sh_geom.Point(coords[-2])
+            return None
+    
+    @staticmethod
+    def parallel_line_centered(p1, p2, center, length):
+        """Generate a parallel line."""
+        # Compute the direction vector.
+        dx = p2.x - p1.x
+        dy = p2.y - p1.y
+
+        # Normalize the direction vector.
+        magnitude = (dx**2 + dy**2) ** 0.5
+        if magnitude == 0:
+            return None
+        dx /= magnitude
+        dy /= magnitude
+
+        # Compute half-length shifts.
+        half_dx = (dx * length) / 2
+        half_dy = (dy * length) / 2
+
+        # Compute the endpoints of the new parallel line.
+        new_p1 = sh_geom.Point(center.x - half_dx, center.y - half_dy)
+        new_p2 = sh_geom.Point(center.x + half_dx, center.y + half_dy)
+
+        return sh_geom.LineString([new_p1, new_p2])
+        
     def get_transect_for_primary(self):
         """
         Get a transect line from two primary connected lines.
@@ -270,17 +304,8 @@ class VertexNode:
         line_obj1 = self.get_line_obj(line_ids[0])
         line_obj2 = self.get_line_obj(line_ids[1])
 
-        # Helper to get the neighbor coordinate based on vertex_index.
-        def get_neighbor(line_obj):
-            coords = list(line_obj.line.coords)
-            if line_obj.vertex_index == 0 and len(coords) >= 2:
-                return sh_geom.Point(coords[1])
-            elif line_obj.vertex_index == -1 and len(coords) >= 2:
-                return sh_geom.Point(coords[-2])
-            return None
-
-        pt1 = get_neighbor(line_obj1)
-        pt2 = get_neighbor(line_obj2)
+        pt1 = self.get_neighbor(line_obj1)
+        pt2 = self.get_neighbor(line_obj2)
 
         if pt1 is None or pt2 is None:
             return None
@@ -290,6 +315,40 @@ class VertexNode:
         )
         return transect
     
+    def get_transect_for_primary_second(self):
+        """
+        Get a transect line from the second primary connected line.
+        
+        For the second primary line, this method retrieves the neighbor point from 
+        two lines in the second connectivity group, creates a reference line through the 
+        vertex by mirroring the neighbor point about the vertex, and then generates a 
+        parallel line centered at the vertex.
+        
+        Returns:
+            A LineString representing the transect if available, otherwise None.
+
+        """
+        # Ensure there is a second connectivity group.
+        if not self.line_connected or len(self.line_connected) < 2:
+            return None
+
+        # Use the first line of the second connectivity group.
+        second_primary = self.line_connected[1]
+        line_obj1 = self.get_line_obj(second_primary[0])
+        line_obj2 = self.get_line_obj(second_primary[1])
+        if not line_obj1 or not line_obj2:
+            return None
+
+        pt1 = self.get_neighbor(line_obj1)
+        pt2 = self.get_neighbor(line_obj2)
+
+        if pt1 is None or pt2 is None:
+            return None
+
+        center = self.vertex
+        transect = self.parallel_line_centered(pt1, pt2, center, TRANSECT_LENGTH)
+        return transect
+
     def trim_primary_end(self, polys):
         """
         Trim first primary line in the vertex.
@@ -307,7 +366,10 @@ class VertexNode:
 
         # use the first line to get transect
         # transect = self.get_line_obj(line[0]).end_transect()
-        transect = self.get_transect_for_primary()
+        if len(self.line_connected) == 1:
+            transect = self.get_transect_for_primary()
+        elif len(self.line_connected) > 1:
+            transect = self.get_transect_for_primary_second()
 
         idx_1 = line[0]
         poly_1 = None
