@@ -23,6 +23,7 @@ import numpy as np
 import shapely
 import shapely.geometry as sh_geom
 
+import beratools.core.algo_common as algo_common
 import beratools.core.constants as bt_const
 from beratools.core.algo_merge_lines import MergeLines
 
@@ -250,6 +251,45 @@ class VertexNode:
         poly = self._trim_polygon(poly, transect)
         return poly
     
+    def get_transect_for_primary(self):
+        """
+        Get a transect line from two primary connected lines.
+
+        This method calculates a transect line that is perpendicular to the line segment
+        formed by the next vertex neighbors of these two lines and the current vertex.
+
+        Return:
+            A transect line object if the conditions are met, otherwise None.
+
+        """
+        if not self.line_connected or len(self.line_connected[0]) != 2:
+            return None
+        
+        # Retrieve the two connected line objects from the first connectivity group.
+        line_ids = self.line_connected[0]
+        line_obj1 = self.get_line_obj(line_ids[0])
+        line_obj2 = self.get_line_obj(line_ids[1])
+
+        # Helper to get the neighbor coordinate based on vertex_index.
+        def get_neighbor(line_obj):
+            coords = list(line_obj.line.coords)
+            if line_obj.vertex_index == 0 and len(coords) >= 2:
+                return sh_geom.Point(coords[1])
+            elif line_obj.vertex_index == -1 and len(coords) >= 2:
+                return sh_geom.Point(coords[-2])
+            return None
+
+        pt1 = get_neighbor(line_obj1)
+        pt2 = get_neighbor(line_obj2)
+
+        if pt1 is None or pt2 is None:
+            return None
+
+        transect = algo_common.generate_perpendicular_line_precise(
+            [pt1, self.vertex, pt2], offset=40
+        )
+        return transect
+    
     def trim_primary_end(self, polys):
         """
         Trim first primary line in the vertex.
@@ -264,8 +304,11 @@ class VertexNode:
         new_polys = []
         
         line = self.line_connected[0]
+
         # use the first line to get transect
-        transect = self.get_line_obj(line[0]).end_transect()
+        # transect = self.get_line_obj(line[0]).end_transect()
+        transect = self.get_transect_for_primary()
+
         idx_1 = line[0]
         poly_1 = None
         idx_1 = line[1]

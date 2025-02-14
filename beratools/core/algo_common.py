@@ -342,6 +342,9 @@ def generate_perpendicular_line_precise(points, offset=20):
 
     """
     # Compute the angle of the line
+    if len(points) not in [2, 3]:
+        return None
+    
     center = points[1]
     perp_line = None
 
