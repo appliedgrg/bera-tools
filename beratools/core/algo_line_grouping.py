@@ -61,7 +61,6 @@ CONCERN_CLASSES = (
 
 ANGLE_TOLERANCE = np.pi / 10
 TURN_ANGLE_TOLERANCE = np.pi * 0.5  # (little bigger than right angle)
-GROUP_ATTRIBUTE = "group"
 TRIM_THRESHOLD = 0.15
 TRANSECT_LENGTH = 40
 
@@ -597,8 +596,8 @@ class LineGrouping:
 
     def create_vertex_list(self):
         # check if data has group column
-        if GROUP_ATTRIBUTE in self.lines.keys():
-            self.groups = self.lines[GROUP_ATTRIBUTE]
+        if bt_const.BT_GROUP in self.lines.keys():
+            self.groups = self.lines[bt_const.BT_GROUP]
             self.has_group_attr = True
             if self.groups.hasnans:
                 self.need_regrouping = True
@@ -727,7 +726,7 @@ class LineGrouping:
                     )
 
     def get_merged_lines_original(self):
-        return self.lines.dissolve(by=GROUP_ATTRIBUTE)
+        return self.lines.dissolve(by=bt_const.BT_GROUP)
 
     def run_grouping(self):
         self.create_vertex_list()
@@ -754,7 +753,7 @@ class LineGrouping:
     def run_line_merge(self, in_line_gdf):
         out_line_gdf = in_line_gdf
         if self.merge_group:
-            out_line_gdf = in_line_gdf.dissolve(by=GROUP_ATTRIBUTE, as_index=False)
+            out_line_gdf = in_line_gdf.dissolve(by=bt_const.BT_GROUP, as_index=False)
 
         out_line_gdf.geometry = out_line_gdf.line_merge()
 

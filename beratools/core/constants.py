@@ -21,6 +21,7 @@ NADDatum = ['NAD83 Canadian Spatial Reference System', 'North American Datum 198
 ASSETS_PATH = "assets"
 BT_DEBUGGING = False
 BT_UID = 'BT_UID'
+BT_GROUP = "group"
 
 BT_EPSILON = np.finfo(float).eps
 BT_NODATA_COST = np.inf

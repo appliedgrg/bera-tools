@@ -158,6 +158,10 @@ class LineInfo:
         self.footprint = self.footprint.dissolve()
         self.footprint.geometry = self.footprint.buffer(-0.005)
 
+        # transfer group value to footprint
+        if bt_const.BT_GROUP in self.line.columns:
+            self.footprint[bt_const.BT_GROUP] = self.line[bt_const.BT_GROUP]
+
     def prepare_ring_buffer(self):
         nrings = 1
         ringdist = 15
