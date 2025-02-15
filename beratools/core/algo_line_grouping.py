@@ -63,7 +63,7 @@ ANGLE_TOLERANCE = np.pi / 10
 TURN_ANGLE_TOLERANCE = np.pi * 0.5  # (little bigger than right angle)
 GROUP_ATTRIBUTE = "group"
 TRIM_THRESHOLD = 0.15
-TRANSECT_LENGTH = 35
+TRANSECT_LENGTH = 40
 
 
 def points_in_line(line):
@@ -254,7 +254,7 @@ class VertexNode:
     
     @staticmethod
     def get_neighbor(line_obj):
-            coords = list(line_obj.line.coords)
+            coords = list(line_obj.sim_line.coords)
             if line_obj.vertex_index == 0 and len(coords) >= 2:
                 return sh_geom.Point(coords[1])
             elif line_obj.vertex_index == -1 and len(coords) >= 2:
@@ -366,10 +366,10 @@ class VertexNode:
 
         # use the first line to get transect
         # transect = self.get_line_obj(line[0]).end_transect()
-        if len(self.line_connected) == 1:
-            transect = self.get_transect_for_primary()
-        elif len(self.line_connected) > 1:
-            transect = self.get_transect_for_primary_second()
+        # if len(self.line_connected) == 1:
+        transect = self.get_transect_for_primary()
+        # elif len(self.line_connected) > 1:
+        #     transect = self.get_transect_for_primary_second()
 
         idx_1 = line[0]
         poly_1 = None
@@ -426,11 +426,11 @@ class VertexNode:
                or poly.buffer(SMALL_BUFFER).contains(primary_lines[1])):
                 poly_primary.append(poly)
             else:
+                # assign polygon to trim with line
                 for trim in poly_trim_list:
-                    # TODO: sometimes contains can not tolerance tiny error: 1e-11
-                    # buffer polygon by 1 meter to make sure contains works
-                    midpoint = trim.line_cleanup.interpolate(0.5, normalized=True)
-                    if poly.buffer(SMALL_BUFFER).contains(midpoint):
+                    # midpoint fails for very short line
+                    # midpoint = trim.line_cleanup.interpolate(0.5, normalized=True)
+                    if poly.buffer(SMALL_BUFFER).contains(trim.line_cleanup):
                         trim.poly_cleanup = poly
                         trim.poly_index = j
 
@@ -720,6 +720,7 @@ class LineGrouping:
                     # update main line and polygon DataFrame
                     self.polys.at[p_trim.poly_index, "geometry"] = p_trim.poly_cleanup
                     self.lines.at[p_trim.line_index, "geometry"] = p_trim.line_cleanup
+
                     # update VertexNode's line
                     self.update_line_in_vertex_node(
                         p_trim.line_index, p_trim.line_cleanup
