@@ -24,8 +24,8 @@ import shapely
 import shapely.geometry as sh_geom
 
 import beratools.core.algo_common as algo_common
+import beratools.core.algo_merge_lines as algo_merge_lines
 import beratools.core.constants as bt_const
-from beratools.core.algo_merge_lines import MergeLines
 
 TRIMMING_EFFECT_AREA = 50  # meters
 SMALL_BUFFER = 1
@@ -566,10 +566,17 @@ class LineGrouping:
     
     def __init__(self, in_line_gdf, merge_group=True) -> None:
         # remove empty and null geometry
-        self.lines = in_line_gdf.copy()
-        self.lines = self.lines[
-            ~self.lines.geometry.isna() & ~self.lines.geometry.is_empty
-        ]
+        # self.lines = in_line_gdf.copy()
+        # self.lines = self.lines[
+        #     ~self.lines.geometry.isna() & ~self.lines.geometry.is_empty
+        # ]
+        if in_line_gdf is None:
+            raise ValueError("Line GeoDataFrame cannot be None")
+
+        if in_line_gdf.empty:
+            raise ValueError("Line GeoDataFrame cannot be empty")
+        
+        self.lines = algo_common.clean_line_geometries(in_line_gdf)
         self.lines.reset_index(inplace=True, drop=True)
         self.merge_group = merge_group
 
@@ -666,6 +673,9 @@ class LineGrouping:
             v = self.vertex_list[i]
             v.update_line(line_id, line)
 
+    def run_line_merge(self):
+        return algo_merge_lines.run_line_merge(self.lines, self.merge_group)
+
     def find_vertex_for_poly_trimming(self):
         self.vertex_of_concern = [
             i for i in self.merged_vertex_list if i.vertex_class in CONCERN_CLASSES
@@ -750,25 +760,8 @@ class LineGrouping:
         self.run_line_merge_trimmed()
         self.check_geom_validity()
 
-    def run_line_merge(self, in_line_gdf):
-        out_line_gdf = in_line_gdf
-        if self.merge_group:
-            out_line_gdf = in_line_gdf.dissolve(by=bt_const.BT_GROUP, as_index=False)
-
-        out_line_gdf.geometry = out_line_gdf.line_merge()
-
-        for row in out_line_gdf.itertuples():
-            if isinstance(row.geometry, sh_geom.MultiLineString):
-                worker = MergeLines(row.geometry)
-                merged_line = worker.merge_all_lines()
-                if merged_line:
-                    out_line_gdf.at[row.Index, "geometry"] = merged_line
-
-        out_line_gdf.reset_index(inplace=True, drop=True)
-        return out_line_gdf
-
     def run_line_merge_trimmed(self):
-        self.merged_lines_trimmed = self.run_line_merge(self.lines)
+        self.merged_lines_trimmed = self.run_line_merge()
 
     def check_geom_validity(self):
         """
@@ -801,12 +794,12 @@ class LineGrouping:
         self.invalid_lines.reset_index(inplace=True, drop=True)
 
     def save_file(self, out_file):
-        # self.run_line_merge_trimmed()
-
         if not self.valid_lines.empty:
+            self.valid_lines["length"] = self.valid_lines.length
             self.valid_lines.to_file(out_file, layer="merged_lines")
 
         if not self.valid_polys.empty:
+            self.valid_polys["area"] = self.valid_polys.area
             self.valid_polys.to_file(out_file, layer="clean_footprint")
 
         if not self.invalid_lines.empty:
@@ -814,7 +807,6 @@ class LineGrouping:
 
         if not self.invalid_polys.empty:
             self.invalid_polys.to_file(out_file, layer="invalid_polygons")
-
 
 @dataclass
 class PolygonTrimming:

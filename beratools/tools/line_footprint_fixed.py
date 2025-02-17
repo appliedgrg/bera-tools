@@ -27,6 +27,7 @@ import beratools.core.algo_common as algo_common
 import beratools.core.constants as bt_const
 import beratools.tools.common as bt_common
 from beratools.core.algo_line_grouping import LineGrouping
+from beratools.core.algo_split_with_lines import LineSplitter
 from beratools.core.tool_base import execute_multiprocessing
 
 FP_FIXED_WIDTH_DEFAULT = 5.0
@@ -105,9 +106,13 @@ def process_single_line(line_arg):
     # line_id = line_arg[4]
 
     # TODO: deal with case when inter_poly is empty
-    widths, line, perp_lines, perp_lines_original = calculate_average_width(
-        row.iloc[0].geometry, inter_poly, offset, n_samples
-    )
+    try:
+        widths, line, perp_lines, perp_lines_original = calculate_average_width(
+            row.iloc[0].geometry, inter_poly, offset, n_samples
+        )
+    except Exception as e:
+        print(e)
+        return None
 
     # Calculate the 75th percentile width
     # filter zeros in width array
@@ -288,22 +293,33 @@ def line_footprint_fixed(
     if not merge_group:
         line_gdf.geometry = line_gdf.line_merge()
         
-    line_gdf = line_gdf[
-        ~line_gdf.geometry.isna()
-        & ~line_gdf.geometry.is_empty
-    ]
-    line_gdf = line_gdf[line_gdf.geometry.length > bt_const.SMALL_BUFFER]
-
+    line_gdf = algo_common.clean_line_geometries(line_gdf)
     poly_gdf = gpd.read_file(in_footprint, layer=in_layer_fp)
+    
+    # split lines
+    merged_line_gdf = line_gdf.copy(deep=True)
+    if merge_group:
+        lg = LineGrouping(line_gdf, merge_group)
+        lg.run_grouping()
+        merged_line_gdf = lg.run_line_merge()
+    else:
+        # merge group first, then not merge after splitting
+        try:
+            lg = LineGrouping(line_gdf, not merge_group)
+            lg.run_grouping()
+            merged_line_gdf = lg.run_line_merge()
+            splitter = LineSplitter(merged_line_gdf)
+            splitter.process()
+            splitter.save_to_geopackage(out_footprint)
 
-    lg = LineGrouping(line_gdf, merge_group)
-    lg.run_grouping()
-    merged_line_gdf = lg.run_line_merge(line_gdf)
+            lg = LineGrouping(splitter.split_lines_gdf, merge_group)
+            lg.run_grouping()
+            merged_line_gdf = lg.run_line_merge()
+        except ValueError as e:
+            print(f"Exception: line_footprint_fixed: {e}")
 
-    # check validity
-    merged_line_gdf = merged_line_gdf[
-        ~merged_line_gdf.geometry.isna() & ~merged_line_gdf.geometry.is_empty
-    ]
+    # save original merged lines
+    merged_line_gdf.to_file(out_footprint, layer="merged_lines_original")
 
     line_args = prepare_line_args(merged_line_gdf, poly_gdf, n_samples, offset)
     del poly_gdf
@@ -345,9 +361,6 @@ def line_footprint_fixed(
     buffer_gdf = buffer_gdf.set_crs(perp_lines_gdf.crs, allow_override=True)
     buffer_gdf.reset_index(inplace=True, drop=True)
 
-    # save original merged lines
-    merged_line_gdf.to_file(out_footprint, layer="merged_lines_original")
-
     # trim lines and footprints
     lg.run_cleanup(buffer_gdf)
     lg.save_file(out_footprint)
@@ -380,7 +393,6 @@ def line_footprint_fixed(
     line_attr.to_file(out_aux_gpkg.as_posix(), layer=layer)
 
     print("Fixed width footprint tool finished.")
-
 
 if __name__ == "__main__":
     in_args, in_verbose = bt_common.check_arguments()

@@ -106,6 +106,21 @@ def clean_geometries(gdf):
     ]  # Remove empty geometries
     return gdf
 
+def clean_line_geometries(line_gdf):
+    """Clean line geometries in the GeoDataFrame."""
+    if line_gdf is None:
+        return line_gdf
+    
+    if line_gdf.empty:
+        return line_gdf
+    
+    line_gdf = line_gdf[
+        ~line_gdf.geometry.isna()
+        & ~line_gdf.geometry.is_empty
+    ]
+    line_gdf = line_gdf[line_gdf.geometry.length > bt_const.SMALL_BUFFER]
+    return line_gdf
+
 def prepare_lines_gdf(file_path, layer=None, proc_segments=True):
     """
     Split lines at vertices or return original rows.

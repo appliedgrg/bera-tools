@@ -4,12 +4,15 @@ import geopandas as gpd
 from shapely import STRtree, snap
 from shapely.geometry import GeometryCollection, LineString, MultiPoint, Point
 
+import beratools.core.algo_common as algo_common
+
 EPSILON = 1e-5
+INTER_STATUS_COL = 'INTER_STATUS'
 
 class LineSplitter:
     """Split lines at intersections."""
 
-    def __init__(self, input_gpkg, layer_name):
+    def __init__(self, line_gdf):
         """
         Initialize the LineSplitter with the input GeoPackage and layer name.
 
@@ -18,11 +21,11 @@ class LineSplitter:
         layer_name (str): Name of the layer to read from the GeoPackage.
 
         """
-        self.input_gpkg = input_gpkg
-        self.layer_name = layer_name
-        self.gdf = gpd.read_file(self.input_gpkg, layer=self.layer_name)
-        self.gdf = self.gdf.explode()  # Explode if needed for multi-part geometries
-        self.sindex = self.gdf.sindex  # Spatial index for faster operations
+        # Explode if needed for multi-part geometries
+        self.line_gdf = line_gdf.explode() 
+        self.line_gdf[INTER_STATUS_COL] = 1  # record line intersection status
+        self.inter_status = {}
+        self.sindex = self.line_gdf.sindex  # Spatial index for faster operations
 
         self.intersection_gdf = []
         self.split_lines_gdf = None
@@ -99,13 +102,13 @@ class LineSplitter:
         intersection_points = []
 
         # Iterate through each line geometry to find intersections
-        for idx, line1 in enumerate(self.gdf.geometry):
+        for idx, line1 in enumerate(self.line_gdf.geometry):
             # Use spatial index to find candidates for intersection
             indices = list(self.sindex.intersection(line1.bounds))
             indices.remove(idx)  # Remove the current index from the list
             
             for match_idx in indices:
-                line2 = self.gdf.iloc[match_idx].geometry
+                line2 = self.line_gdf.iloc[match_idx].geometry
 
                 # Create an index pair where the smaller index comes first
                 pair = tuple(sorted([idx, match_idx]))
@@ -126,20 +129,26 @@ class LineSplitter:
                     if intersections.is_empty:
                         continue
 
-                    # Intersection can be Point, MultiPoint, or GeometryCollection
+                    # Intersection can be Point, MultiPoint, LineString or GeometryCollection
                     if isinstance(intersections, Point):
                         intersection_points.append(intersections)
-                    elif isinstance(intersections, MultiPoint):
-                        intersection_points.extend(intersections.geoms)
-                    elif isinstance(intersections, GeometryCollection):
-                        for item in intersections.geoms:
-                            if isinstance(item, Point):
-                                intersection_points.append(item)
+                    else:
+                        # record for further inspection
+                        # GeometryCollection, MultiLineString
+                        for item in pair:
+                            self.inter_status[item] = 0 
+                        
+                        if isinstance(intersections, MultiPoint):
+                            intersection_points.extend(intersections.geoms)
+                        elif isinstance(intersections, LineString):
+                            intersection_points.append(
+                                intersections.interpolate(0.5, normalized=True)
+                            )
 
-        if intersection_points:
-            self.intersection_gdf = gpd.GeoDataFrame(
-                geometry=intersection_points, crs=self.gdf.crs
-            )
+
+        self.intersection_gdf = gpd.GeoDataFrame(
+            geometry=intersection_points, crs=self.line_gdf.crs
+        )
 
     def split_lines_at_intersections(self):
         """
@@ -159,7 +168,7 @@ class LineSplitter:
         new_rows = []
 
         # Iterate through each intersection point to split lines at that point
-        for row in self.gdf.itertuples():
+        for row in self.line_gdf.itertuples():
             if not isinstance(row.geometry, LineString):
                 continue
 
@@ -190,14 +199,20 @@ class LineSplitter:
                 new_rows.append(new_row)
 
         self.split_lines_gdf = gpd.GeoDataFrame(
-            new_rows, columns=self.gdf.columns, crs=self.gdf.crs
+            new_rows, columns=self.line_gdf.columns, crs=self.line_gdf.crs
         )
+
+        self.split_lines_gdf = algo_common.clean_line_geometries(self.split_lines_gdf)
         
         # Debugging: print how many segments were created
         print(f"Total new line segments created: {len(new_rows)}")
 
     def save_to_geopackage(
-        self, line_layer="split_lines", intersection_layer="intersection_points"
+        self,
+        input_gpkg,
+        line_layer="split_lines",
+        intersection_layer="inter_points",
+        invalid_layer="invalid_splits",
     ):
         """
         Save the split lines and intersection points to the GeoPackage.
@@ -208,19 +223,32 @@ class LineSplitter:
 
         """
         # Save intersection points and split lines to the GeoPackage
-        if len(self.intersection_gdf) > 0:
-            self.intersection_gdf.to_file(
-                self.input_gpkg, layer="intersection_points", driver="GPKG"
-            )
+        if self.split_lines_gdf is not None:
+            if len(self.intersection_gdf) > 0:
+                self.intersection_gdf.to_file(
+                    input_gpkg, layer="intersection_points", driver="GPKG"
+                )
 
-        if len(self.split_lines_gdf) > 0:
-            self.split_lines_gdf.to_file(
-                self.input_gpkg, layer="split_lines", driver="GPKG"
-            )
+        if self.split_lines_gdf is not None:
+            if len(self.split_lines_gdf) > 0:
+                self.split_lines_gdf.to_file(
+                    input_gpkg, layer="split_lines", driver="GPKG"
+                )
+
+        # save invalid splits
+        invalid_splits = self.line_gdf.loc[self.line_gdf[INTER_STATUS_COL] == 0]
+        if not invalid_splits.empty:
+            if len(invalid_splits) > 0:
+                invalid_splits.to_file(
+                    input_gpkg, layer="invalid_splits", driver="GPKG"
+                )
     
     def process(self):
         """Find intersection points, split lines at intersections."""
         self.find_intersections()
+        if self.inter_status:
+            for idx in self.inter_status.keys():
+                self.line_gdf.loc[idx, INTER_STATUS_COL] = self.inter_status[idx]
 
         if not self.intersection_gdf.empty:
             # Split the lines at intersection points
@@ -237,6 +265,7 @@ if __name__ == "__main__":
     input_gpkg = r"I:\Temp\footprint_final.gpkg"
     layer_name = "merged_lines_original"
 
-    splitter = LineSplitter(input_gpkg, layer_name)
+    gdf = gpd.read_file(input_gpkg, layer=layer_name)
+    splitter = LineSplitter(gdf)
     splitter.process()
-    splitter.save_to_geopackage()
+    splitter.save_to_geopackage(input_gpkg)

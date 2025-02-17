@@ -17,9 +17,29 @@ from itertools import pairwise
 from operator import itemgetter
 
 import networkit as nk
-from shapely import LineString, MultiLineString, Point, reverse
-from shapely.geometry import mapping
+import shapely.geometry as sh_geom
 
+import beratools.core.algo_common as algo_common
+import beratools.core.constants as bt_const
+
+
+def run_line_merge(in_line_gdf, merge_group):
+    out_line_gdf = in_line_gdf
+    if merge_group:
+        out_line_gdf = in_line_gdf.dissolve(by=bt_const.BT_GROUP, as_index=False)
+
+    out_line_gdf.geometry = out_line_gdf.line_merge()
+
+    for row in out_line_gdf.itertuples():
+        if isinstance(row.geometry, sh_geom.MultiLineString):
+            worker = MergeLines(row.geometry)
+            merged_line = worker.merge_all_lines()
+            if merged_line:
+                out_line_gdf.at[row.Index, "geometry"] = merged_line
+
+    out_line_gdf = algo_common.clean_line_geometries(out_line_gdf)
+    out_line_gdf.reset_index(inplace=True, drop=True)
+    return out_line_gdf
 
 class MergeLines:
     """Merge line segments in MultiLineString."""
@@ -38,8 +58,8 @@ class MergeLines:
 
         # TODO: check empty line and null geoms
         self.line_segs = [line for line in self.line_segs if line.length > 1e-3]
-        self.multi_line = MultiLineString(self.line_segs)
-        m = mapping(self.multi_line)
+        self.multi_line = sh_geom.MultiLineString(self.line_segs)
+        m = sh_geom.mapping(self.multi_line)
         self.end = [(i[0], i[-1]) for i in m['coordinates']]
 
         self.G = nk.Graph(edgesIndexed=True)
@@ -47,13 +67,13 @@ class MergeLines:
         self.G.addEdge(0, 1)
 
         self.node_poly = [
-            Point(self.end[0][0]).buffer(1),
-            Point(self.end[0][1]).buffer(1),
+            sh_geom.Point(self.end[0][0]).buffer(1),
+            sh_geom.Point(self.end[0][1]).buffer(1),
         ]
 
         for i, line in enumerate(self.end[1:]):
             node_exists = False
-            pt = Point(line[0])
+            pt = sh_geom.Point(line[0])
             pt_buffer = pt.buffer(1)
 
             for node in self.G.iterNodes():
@@ -65,7 +85,7 @@ class MergeLines:
                 self.node_poly.append(pt_buffer)
 
             node_exists = False
-            pt = Point(line[1])
+            pt = sh_geom.Point(line[1])
             pt_buffer = pt.buffer(1)
             for node in self.G.iterNodes():
                 if self.node_poly[node].contains(pt):
@@ -158,17 +178,18 @@ class MergeLines:
         for i, id in enumerate(line_list):
             pair = pairs[i]
             poly_t = self.node_poly[pair[0]]
-            point_t = Point(self.end[id][0])
+            point_t = sh_geom.Point(self.end[id][0])
             if  poly_t.contains(point_t):
                 line = self.line_segs[id]
             else:
-                line = reverse(self.line_segs[id])
+                # line = reverse(self.line_segs[id])
+                line = self.line_segs[id].reverse()
 
             vertices.extend(list(line.coords))
             last_vertex = vertices.pop()
 
         vertices.append(last_vertex)
-        merged_line = LineString(vertices)
+        merged_line = sh_geom.LineString(vertices)
 
         return [merged_line]
 
@@ -185,7 +206,7 @@ class MergeLines:
         # print('Merge lines done.')
 
         if len(lines) > 1:
-            return MultiLineString(lines)
+            return sh_geom.MultiLineString(lines)
         elif len(lines) == 1:
             return lines[0]
         else:
