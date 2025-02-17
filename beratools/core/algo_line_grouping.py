@@ -799,6 +799,9 @@ class LineGrouping:
             self.valid_lines.to_file(out_file, layer="merged_lines")
 
         if not self.valid_polys.empty:
+            if "length" in self.valid_polys.columns:
+                self.valid_polys.drop(columns=["length"], inplace=True)
+                
             self.valid_polys["area"] = self.valid_polys.area
             self.valid_polys.to_file(out_file, layer="clean_footprint")
 

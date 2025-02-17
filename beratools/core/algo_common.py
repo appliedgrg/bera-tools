@@ -480,3 +480,18 @@ def corridor_raster(
         return None
 
     return corridor_thresh_cl
+
+def remove_holes(geom):
+    if geom.geom_type == "Polygon":
+        if geom.interiors:
+            return sh_geom.Polygon(geom.exterior)
+        return geom
+    elif geom.geom_type == "MultiPolygon":
+        new_polygons = []
+        for polygon in geom.geoms:  # Iterate through MultiPolygon
+            if polygon.interiors:
+                new_polygons.append(sh_geom.Polygon(polygon.exterior))
+            else:
+                new_polygons.append(polygon)
+        return sh_geom.MultiPolygon(new_polygons)
+    return geom  # Return other geometry types as is

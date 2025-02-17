@@ -54,8 +54,9 @@ def prepare_line_args(line_gdf, poly_gdf, n_samples, offset):
     spatial_index = poly_gdf.sindex
     line_args = []
 
-    for row in line_gdf.itertuples():
-        line = row.geometry
+    for idx in line_gdf.index:
+        row = line_gdf.loc[[idx]]
+        line = row.geometry.iloc[0]
 
         # Skip rows where geometry is None
         if line is None:
@@ -63,9 +64,14 @@ def prepare_line_args(line_gdf, poly_gdf, n_samples, offset):
             continue
 
         inter_poly = poly_gdf.loc[spatial_index.query(line)]
+        if bt_const.BT_GROUP in inter_poly.columns:
+            inter_poly = inter_poly[
+                inter_poly[bt_const.BT_GROUP] == row[bt_const.BT_GROUP].values[0]
+            ]
+
         try:
             line_args.append(
-                [line_gdf.loc[[row.Index]], inter_poly, n_samples, offset, row.Index]
+                [row, inter_poly, n_samples, offset, idx]
             )
         except Exception as e:
             print(e)
@@ -188,7 +194,7 @@ def generate_fixed_width_footprint(line_gdf, max_width=False):
     return buffer_gdf
 
 
-def smooth_linestring(line, tolerance=1.0):
+def smooth_linestring(line, tolerance=0.5):
     """
     Smooths a LineString geometry using the Ramer-Douglas-Peucker algorithm.
 
@@ -201,15 +207,15 @@ def smooth_linestring(line, tolerance=1.0):
     The smoothed LineString geometry.
 
     """
-    # simplified_line = line.simplify(tolerance)
-    simplified_line = line
+    simplified_line = line.simplify(tolerance)
+    # simplified_line = line
     return simplified_line
 
 
 def calculate_average_width(line, polygon, offset, n_samples):
     """Calculate the average width of a polygon perpendicular to the given line."""
     # Smooth the line
-    line = smooth_linestring(line, tolerance=1.0)
+    line = smooth_linestring(line, tolerance=0.1)
 
     valid_widths = 0
     sample_points = generate_sample_points(line, n_samples=n_samples)
@@ -294,7 +300,10 @@ def line_footprint_fixed(
         line_gdf.geometry = line_gdf.line_merge()
         
     line_gdf = algo_common.clean_line_geometries(line_gdf)
+
+    # read footprints and remove holes
     poly_gdf = gpd.read_file(in_footprint, layer=in_layer_fp)
+    poly_gdf["geometry"] = poly_gdf["geometry"].apply(algo_common.remove_holes)
     
     # split lines
     merged_line_gdf = line_gdf.copy(deep=True)
@@ -321,8 +330,8 @@ def line_footprint_fixed(
     # save original merged lines
     merged_line_gdf.to_file(out_footprint, layer="merged_lines_original")
 
+    # prepare line arguments
     line_args = prepare_line_args(merged_line_gdf, poly_gdf, n_samples, offset)
-    del poly_gdf
 
     out_lines = execute_multiprocessing(
         process_single_line, line_args, "Fixed footprint", processes, mode=parallel_mode
@@ -331,13 +340,13 @@ def line_footprint_fixed(
 
     ############################################
     # update avg_width and max_width by max value of group
-    group_max = line_attr.groupby('group').agg({
+    group_max = line_attr.groupby(bt_const.BT_GROUP).agg({
         'avg_width': 'max',
         'max_width': 'max'
     }).reset_index()
 
     # Step 2: Merge the result back to the original dataframe based on 'group'
-    line_attr = line_attr.merge(group_max, on='group', suffixes=('', '_max'))
+    line_attr = line_attr.merge(group_max, on=bt_const.BT_GROUP, suffixes=('', '_max'))
 
     # Step 3: Overwrite the original columns directly with the max values
     line_attr['avg_width'] = line_attr['avg_width_max']
@@ -391,6 +400,9 @@ def line_footprint_fixed(
     layer = "centerline_simplified"
     line_attr = line_attr.drop(columns="perp_lines")
     line_attr.to_file(out_aux_gpkg.as_posix(), layer=layer)
+
+    # save footprints without holes
+    poly_gdf.to_file(out_aux_gpkg.as_posix(), layer="footprint_no_holes")
 
     print("Fixed width footprint tool finished.")
 
