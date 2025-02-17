@@ -18,7 +18,7 @@ from pprint import pprint
 sys.path.append(Path(__file__).resolve().parents[1].as_posix())
 
 import yaml
-from split_with_lines_class import split_with_lines
+from beratools.core.algo_split_with_lines import split_with_lines
 
 from beratools.core.algo_footprint_rel import line_footprint_rel
 from beratools.core.constants import ParallelMode
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     # split_with_lines(**args_split_lines)
 
     # ground footprint (intersection)
-    print_message("Starting ground footprint intersection")
+    # print_message("Starting ground footprint intersection")
     # args_footprint_inter = params["args_footprint_inter"]
     # args_footprint_inter['processes'] = processes
     # args_footprint_inter['parallel_mode'] = parallel_mode
