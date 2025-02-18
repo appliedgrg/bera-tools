@@ -212,61 +212,58 @@ def smooth_linestring(line, tolerance=0.5):
     return simplified_line
 
 
-def calculate_average_width(line, polygon, offset, n_samples):
+def calculate_average_width(line, in_poly, offset, n_samples):
     """Calculate the average width of a polygon perpendicular to the given line."""
     # Smooth the line
-    line = smooth_linestring(line, tolerance=0.1)
+    try:
+        line = smooth_linestring(line, tolerance=0.1)
 
-    valid_widths = 0
-    sample_points = generate_sample_points(line, n_samples=n_samples)
-    sample_points_pairs = list(
-        zip(sample_points[:-2], sample_points[1:-1], sample_points[2:])
-    )
-    widths = np.zeros(len(sample_points_pairs))
-    perp_lines = []
-    perp_lines_original = []
-
-    # remove polygon holes
-    poly_list = []
-    for geom in polygon.geometry:
-        if type(geom) is sh_geom.MultiPolygon:
-            for item in geom.geoms:
-                poly_list.append(sh_geom.Polygon(list(item.exterior.coords)))
-        else:
-            poly_list.append(sh_geom.Polygon(list(geom.exterior.coords)))
-
-    polygon_no_holes = gpd.GeoDataFrame(geometry=poly_list, crs=polygon.crs)
-
-    for i, points in enumerate(sample_points_pairs):
-        perp_line = algo_common.generate_perpendicular_line_precise(
-            points, offset=offset
+        valid_widths = 0
+        sample_points = generate_sample_points(line, n_samples=n_samples)
+        sample_points_pairs = list(
+            zip(sample_points[:-2], sample_points[1:-1], sample_points[2:])
         )
-        perp_lines_original.append(perp_line)
+        widths = np.zeros(len(sample_points_pairs))
+        perp_lines = []
+        perp_lines_original = []
+    except Exception as e:
+        print(e)
+        
+    try:
+        for i, points in enumerate(sample_points_pairs):
+            perp_line = algo_common.generate_perpendicular_line_precise(
+                points, offset=offset
+            )
+            perp_lines_original.append(perp_line)
 
-        polygon_intersect = polygon_no_holes.iloc[
-            polygon_no_holes.sindex.query(perp_line)
-        ]
-        intersections = polygon_intersect.intersection(perp_line)
+            polygon_intersect = in_poly.iloc[in_poly.sindex.query(perp_line)]
+            intersections = polygon_intersect.intersection(perp_line)
 
-        line_list = []
-        try:
+            line_list = []
             for inter in intersections:
-                if not inter.is_empty:
-                    if type(inter) is sh_geom.MultiLineString:
-                        line_list += list(inter.geoms)
-                    else:
-                        line_list.append(inter)
+                if inter.is_empty:
+                    continue
+
+                if isinstance(inter, sh_geom.GeometryCollection):
+                    for item in inter.geoms:
+                        if isinstance(item, sh_geom.LineString):
+                            line_list.append(item)
+                elif isinstance(inter, sh_geom.MultiLineString):
+                    line_list += list(inter.geoms)
+                else:
+                    line_list.append(inter)
 
             perp_lines += line_list
-        except Exception as e:
-            print(e)
 
-        try:
+            if isinstance(line_list, sh_geom.GeometryCollection):
+                print("Found 2: GeometryCollection")
+
             for item in line_list:
                 widths[i] = max(widths[i], item.length)
                 valid_widths += 1
-        except Exception as e:
-            print(e)
+
+    except Exception as e:
+        print(f"loop: {e}")
 
     return (
         widths,

@@ -250,15 +250,26 @@ class VertexNode:
         poly = self._trim_polygon(poly, transect)
         return poly
             # Helper to get the neighbor coordinate based on vertex_index.
-    
+
+    @staticmethod
+    def get_vertex(line_obj, index):
+        coords = list(line_obj.sim_line.coords)
+        # Normalize negative indices.
+        if index < 0:
+            index += len(coords)
+        if 0 <= index < len(coords):
+            return sh_geom.Point(coords[index])
+
     @staticmethod
     def get_neighbor(line_obj):
-            coords = list(line_obj.sim_line.coords)
-            if line_obj.vertex_index == 0 and len(coords) >= 2:
-                return sh_geom.Point(coords[1])
-            elif line_obj.vertex_index == -1 and len(coords) >= 2:
-                return sh_geom.Point(coords[-2])
-            return None
+        index = 0
+
+        if line_obj.vertex_index == 0:
+            index = 1
+        elif line_obj.vertex_index == -1:
+            index = -2
+        
+        return VertexNode.get_vertex(line_obj, index)
     
     @staticmethod
     def parallel_line_centered(p1, p2, center, length):
@@ -300,11 +311,20 @@ class VertexNode:
         
         # Retrieve the two connected line objects from the first connectivity group.
         line_ids = self.line_connected[0]
-        line_obj1 = self.get_line_obj(line_ids[0])
-        line_obj2 = self.get_line_obj(line_ids[1])
+        pt1 = None
+        pt1 = None
+        if line_ids[0] == line_ids[1]:  # line ring
+            # TODO: check line ring when merging vertex nodes.
+            # TODO: change one end index to -1
+            line_id = line_ids[0]
+            pt1 = self.get_vertex(self.get_line_obj(line_id), 1)
+            pt2 = self.get_vertex(self.get_line_obj(line_id), -2)
+        else:  # two different lines
+            line_obj1 = self.get_line_obj(line_ids[0])
+            line_obj2 = self.get_line_obj(line_ids[1])
 
-        pt1 = self.get_neighbor(line_obj1)
-        pt2 = self.get_neighbor(line_obj2)
+            pt1 = self.get_neighbor(line_obj1)
+            pt2 = self.get_neighbor(line_obj2)
 
         if pt1 is None or pt2 is None:
             return None
@@ -360,7 +380,6 @@ class VertexNode:
             return
         
         new_polys = []
-        
         line = self.line_connected[0]
 
         # use the first line to get transect
