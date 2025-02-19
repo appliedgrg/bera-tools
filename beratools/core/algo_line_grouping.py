@@ -234,6 +234,7 @@ class VertexNode:
         polys: list of polygons returned by sindex.query
 
         """
+        polys = polys.geometry
         new_polys = []
         for idx, poly in polys.items():
             out_poly = self.trim_end(poly)
@@ -413,69 +414,74 @@ class VertexNode:
             poly_2 = self._trim_polygon(poly_2, transect)
             new_polys.append([idx_2, poly_2])
 
-        # make primary polygons a bit larger to ensure clean trimming others
-        if len(new_polys) > 0:
-            for item in new_polys:
-                if item[1]:  #  buffer the trimmed polygon by small buffer
-                    item[1] = item[1].buffer(bt_const.SMALL_BUFFER)
-
         return new_polys
     
     def trim_intersection(self, polys, merge_group=True):
         """Trim intersection of lines and polygons."""
+        def get_poly_with_info(line, polys):
+            for idx, row in polys.iterrows():
+                poly = row.geometry
+                if not poly: # TODO: no polygon
+                    continue
+
+                if poly.buffer(SMALL_BUFFER).contains(line):
+                    return idx, poly, row['max_width']
+                
         poly_trim_list = []
         primary_lines = []
+        p_primary_list = []
 
         # retrieve primary lines
-        for j in self.line_connected[0]:  # only one connected line is used
-            primary_lines.append(self.get_line(j))
+        if len(self.line_connected) > 0:
+            for j in self.line_connected[0]:  # only one connected line is used
+                primary_lines.append(self.get_line(j))
+                _, poly, _ = get_poly_with_info(primary_lines[-1], polys)
+                p_primary_list.append(poly.buffer(bt_const.SMALL_BUFFER))
 
         line_idx_to_trim = self.line_not_connected
+        poly_list = []
         if not merge_group:  # add all remaining primary lines for trimming
             if len(self.line_connected) > 1:
                 for line in self.line_connected[1:]:
                     line_idx_to_trim.extend(line)
 
-        for j in line_idx_to_trim:
-            poly_trim = PolygonTrimming(line_index=j, line_cleanup=self.get_line(j))
+            # sort line index to by footprint area
+            for line_idx in line_idx_to_trim:
+                line = self.get_line_geom(line_idx)
+                poly_idx, poly, max_width = get_poly_with_info(line, polys)
+                poly_list.append((line_idx, poly_idx, max_width))
+
+            poly_list = sorted(poly_list, key=lambda x: x[2])
+
+        # create PolygonTrimming object and trim all by primary line
+        for i, indices in enumerate(poly_list):
+            line_idx = indices[0]
+            poly_idx = indices[1]
+            line_cleanup=self.get_line(line_idx)
+            poly_cleanup = polys.loc[poly_idx].geometry
+            poly_trim = PolygonTrimming(
+                line_index=line_idx,
+                line_cleanup=line_cleanup,
+                poly_index=poly_idx,
+                poly_cleanup=poly_cleanup,
+            )
 
             poly_trim_list.append(poly_trim)
+            if p_primary_list:
+                poly_trim.process(p_primary_list, self.vertex)
 
-        poly_primary = []
-        for j, poly in polys.items():
-            if not poly: # TODO: no polygon
-                continue
+            # use poly_trim.poly_cleanup to update polys gdf's geometry
+            polys.at[poly_trim.poly_index, "geometry"] = poly_trim.poly_cleanup
 
-            if(poly.buffer(SMALL_BUFFER).contains(primary_lines[0]) 
-               or poly.buffer(SMALL_BUFFER).contains(primary_lines[1])):
-                poly_primary.append(poly)
-            else:
-                # assign polygon to trim with line
-                for poly_trim in poly_trim_list:
-                    # midpoint fails for very short line
-                    # midpoint = trim.line_cleanup.interpolate(0.5, normalized=True)
-                    if poly.buffer(5*SMALL_BUFFER).contains(poly_trim.line_cleanup):
-                        poly_trim.poly_cleanup = poly
-                        poly_trim.poly_index = j
+        # further trimming overlaps by non-primary lines
+        # poly_list and poly_trim_list have same index
+        for i, indices in enumerate(poly_list):
+            p_list = []
+            for p in poly_list[i+1:]:
+                p_list.append(polys.loc[p[1]].geometry)
 
-        poly_primary = shapely.union_all(poly_primary)
-        for poly_trim in poly_trim_list:
-            # limit poly_primary around vertex
-            # to avoid duplicate cutting of lines and polygons
-            trim_distance = TRIMMING_DISTANCE
-            if poly_trim.line_cleanup.length < 100.0:
-                trim_distance = 50.0
-
-            try:
-                poly_primary = poly_primary.intersection(
-                    self.vertex.buffer(trim_distance)
-                )
-            except Exception as e:
-                print(f"line_and_poly_cleanup: {e}")
-                return
-            
-            poly_trim.poly_primary = poly_primary
-            poly_trim.process()
+            poly_trim = poly_trim_list[i]
+            poly_trim.process(p_list, self.vertex)
 
         return poly_trim_list
 
@@ -718,9 +724,6 @@ class LineGrouping:
             if len(s_idx) == 0:
                 continue
             
-            if vertex.vertex.distance(sh_geom.Point(520205.54999981, 6230809.35000017)) < 5.0:
-                print("vertex to check: ", vertex.vertex)
-
             #  Trim intersections of primary lines
             polys = self.polys.loc[s_idx].geometry
             if not self.merge_group:
@@ -740,7 +743,7 @@ class LineGrouping:
                             self.polys.at[idx, "geometry"] = out_poly
 
             # retrieve polygons again. Some polygons may be updated
-            polys = self.polys.loc[s_idx].geometry
+            polys = self.polys.loc[s_idx]
             if (
                 vertex.vertex_class == VertexClass.SINGLE_WAY
                 or vertex.vertex_class == VertexClass.TWO_WAY_ZERO_PRIMARY_LINE
@@ -748,6 +751,9 @@ class LineGrouping:
                 or vertex.vertex_class == VertexClass.FOUR_WAY_ZERO_PRIMARY_LINE
                 or vertex.vertex_class == VertexClass.FIVE_WAY_ZERO_PRIMARY_LINE
             ):
+                if vertex.vertex_class == VertexClass.THREE_WAY_ZERO_PRIMARY_LINE:
+                    pass
+
                 out_polys = vertex.trim_end_all(polys)
                 if len(out_polys) == 0:
                     continue
@@ -756,7 +762,8 @@ class LineGrouping:
                 for idx, out_poly in out_polys:
                     self.polys.at[idx, "geometry"] = out_poly
 
-            else:
+            polys = self.polys.loc[s_idx]
+            if vertex.vertex_class != VertexClass.SINGLE_WAY:
                 poly_trim_list = vertex.trim_intersection(polys, self.merge_group)
                 for p_trim in poly_trim_list:
                     # update main line and polygon DataFrame
@@ -854,7 +861,20 @@ class PolygonTrimming:
     line_index: int = field(default=-1)
     line_cleanup: Optional[sh_geom.LineString] = None
 
-    def process(self):
+    def process(self, primary_poly_list=None, vertex=None):
+        # prepare primary polygon
+        poly_primary = shapely.union_all(primary_poly_list)
+        trim_distance = TRIMMING_DISTANCE
+
+        if self.line_cleanup.length < 100.0:
+            trim_distance = 50.0
+
+        poly_primary = poly_primary.intersection(
+            vertex.buffer(trim_distance)
+        )
+            
+        self.poly_primary = poly_primary
+        
         # TODO: check why there is such cases
         if self.poly_cleanup is None:
             print("No polygon to trim.")
