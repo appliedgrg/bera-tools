@@ -16,7 +16,7 @@ import enum
 from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Union
+from typing import Optional, Union
 
 import networkit as nk
 import numpy as np
@@ -27,7 +27,7 @@ import beratools.core.algo_common as algo_common
 import beratools.core.algo_merge_lines as algo_merge_lines
 import beratools.core.constants as bt_const
 
-TRIMMING_EFFECT_AREA = 50  # meters
+TRIMMING_DISTANCE = 75  # meters
 SMALL_BUFFER = 1
 
 @enum.unique
@@ -408,10 +408,16 @@ class VertexNode:
 
         if poly_1:
             poly_1 = self._trim_polygon(poly_1, transect)
-            new_polys.append((idx_1, poly_1))
+            new_polys.append([idx_1, poly_1])
         if poly_2:
             poly_2 = self._trim_polygon(poly_2, transect)
-            new_polys.append((idx_2, poly_2))
+            new_polys.append([idx_2, poly_2])
+
+        # make primary polygons a bit larger to ensure clean trimming others
+        if len(new_polys) > 0:
+            for item in new_polys:
+                if item[1]:  #  buffer the trimmed polygon by small buffer
+                    item[1] = item[1].buffer(bt_const.SMALL_BUFFER)
 
         return new_polys
     
@@ -431,9 +437,9 @@ class VertexNode:
                     line_idx_to_trim.extend(line)
 
         for j in line_idx_to_trim:
-            trim = PolygonTrimming(line_index=j, line_cleanup=self.get_line(j))
+            poly_trim = PolygonTrimming(line_index=j, line_cleanup=self.get_line(j))
 
-            poly_trim_list.append(trim)
+            poly_trim_list.append(poly_trim)
 
         poly_primary = []
         for j, poly in polys.items():
@@ -445,27 +451,31 @@ class VertexNode:
                 poly_primary.append(poly)
             else:
                 # assign polygon to trim with line
-                for trim in poly_trim_list:
+                for poly_trim in poly_trim_list:
                     # midpoint fails for very short line
                     # midpoint = trim.line_cleanup.interpolate(0.5, normalized=True)
-                    if poly.buffer(SMALL_BUFFER).contains(trim.line_cleanup):
-                        trim.poly_cleanup = poly
-                        trim.poly_index = j
+                    if poly.buffer(5*SMALL_BUFFER).contains(poly_trim.line_cleanup):
+                        poly_trim.poly_cleanup = poly
+                        poly_trim.poly_index = j
 
         poly_primary = shapely.union_all(poly_primary)
-        # limit poly_primary around vertex
-        # to avoid duplicate cutting of lines and polygons
-        try:
-            poly_primary = poly_primary.intersection(
-                self.vertex.buffer(TRIMMING_EFFECT_AREA)
-            )
-        except Exception as e:
-            print(f"line_and_poly_cleanup: {e}")
-            return
+        for poly_trim in poly_trim_list:
+            # limit poly_primary around vertex
+            # to avoid duplicate cutting of lines and polygons
+            trim_distance = TRIMMING_DISTANCE
+            if poly_trim.line_cleanup.length < 100.0:
+                trim_distance = 50.0
 
-        for trim in poly_trim_list:
-            trim.poly_primary = poly_primary
-            trim.trim()
+            try:
+                poly_primary = poly_primary.intersection(
+                    self.vertex.buffer(trim_distance)
+                )
+            except Exception as e:
+                print(f"line_and_poly_cleanup: {e}")
+                return
+            
+            poly_trim.poly_primary = poly_primary
+            poly_trim.process()
 
         return poly_trim_list
 
@@ -707,10 +717,12 @@ class LineGrouping:
             s_idx = sindex_poly.query(vertex.vertex, predicate="within")
             if len(s_idx) == 0:
                 continue
-
-            polys = self.polys.loc[s_idx].geometry
             
+            if vertex.vertex.distance(sh_geom.Point(520205.54999981, 6230809.35000017)) < 5.0:
+                print("vertex to check: ", vertex.vertex)
+
             #  Trim intersections of primary lines
+            polys = self.polys.loc[s_idx].geometry
             if not self.merge_group:
                 if (vertex.vertex_class == VertexClass.FIVE_WAY_TWO_PRIMARY_LINE
                     or vertex.vertex_class == VertexClass.FIVE_WAY_ONE_PRIMARY_LINE
@@ -727,6 +739,8 @@ class LineGrouping:
                         if out_poly:
                             self.polys.at[idx, "geometry"] = out_poly
 
+            # retrieve polygons again. Some polygons may be updated
+            polys = self.polys.loc[s_idx].geometry
             if (
                 vertex.vertex_class == VertexClass.SINGLE_WAY
                 or vertex.vertex_class == VertexClass.TWO_WAY_ZERO_PRIMARY_LINE
@@ -834,26 +848,29 @@ class LineGrouping:
 class PolygonTrimming:
     """Store polygon and line to trim. Primary polygon is used to trim both."""
 
-    poly_primary: sh_geom.MultiPolygon = field(default=None)
+    poly_primary: Optional[sh_geom.MultiPolygon] = None
     poly_index: int = field(default=-1)
-    poly_cleanup: sh_geom.Polygon = field(default=None)
+    poly_cleanup: Optional[sh_geom.Polygon] = None
     line_index: int = field(default=-1)
-    line_cleanup: sh_geom.LineString = field(default=None)
+    line_cleanup: Optional[sh_geom.LineString] = None
 
-    def trim(self):
+    def process(self):
         # TODO: check why there is such cases
         if self.poly_cleanup is None:
             print("No polygon to trim.")
             return
-
+        
+        midpoint = self.line_cleanup.interpolate(0.5, normalized=True)
         diff = self.poly_cleanup.difference(self.poly_primary)
         if diff.geom_type == "Polygon":
             self.poly_cleanup = diff
         elif diff.geom_type == "MultiPolygon":
-            area = self.poly_cleanup.area
+            # area = self.poly_cleanup.area
             reserved = []
             for i in diff.geoms:
-                if i.area > TRIM_THRESHOLD * area:  # small part
+                # if i.area > TRIM_THRESHOLD * area:  # small part
+                #     reserved.append(i)
+                if i.contains(midpoint):
                     reserved.append(i)
 
             if len(reserved) == 0:
@@ -862,7 +879,8 @@ class PolygonTrimming:
                 self.poly_cleanup = sh_geom.Polygon(*reserved)
             else:
                 # TODO output all MultiPolygons which should be dealt with
-                self.poly_cleanup = sh_geom.MultiPolygon(reserved)
+                # self.poly_cleanup = sh_geom.MultiPolygon(reserved)
+                print("trim: MultiPolygon detected, please check")
 
         diff = self.line_cleanup.intersection(self.poly_cleanup)
         if diff.geom_type == "GeometryCollection":
