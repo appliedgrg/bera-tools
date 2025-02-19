@@ -1,0 +1,26 @@
+args_footprint_rel:
+    in_line: ${DATA_DIR}/footprint_final.gpkg
+    in_chm: ${DATA_DIR}/CHM.tif
+    out_footprint: ${DATA_DIR}/footprint_rel_width.gpkg
+    in_layer: merged_lines_original
+    out_layer: footprint_rel
+    max_ln_width: 32
+    tree_radius: 1.5
+    max_line_dist: 1.5
+    canopy_avoidance: 0.0
+    exponent: 0
+    canopy_thresh_percentage: 50
+    verbose: false
+
+args_footprint_fixed:
+    in_line: ${DATA_DIR}/footprint_final.gpkg
+    in_footprint: ${DATA_DIR}/footprint_rel_width.gpkg
+    in_layer: merged_lines_original
+    in_layer_fp: footprint_rel
+    n_samples: 15
+    offset: 30
+    max_width: true
+    out_footprint: ${DATA_DIR}/footprint_intersection.gpkg
+    out_layer: clean_footprint
+    verbose: false
+    merge_group: false
