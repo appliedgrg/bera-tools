@@ -211,8 +211,8 @@ class LineSplitter:
         self,
         input_gpkg,
         line_layer="split_lines",
-        intersection_layer="inter_points",
-        invalid_layer="invalid_splits",
+        intersection_layer=None,
+        invalid_layer=None,
     ):
         """
         Save the split lines and intersection points to the GeoPackage.
@@ -223,29 +223,39 @@ class LineSplitter:
 
         """
         # Save intersection points and split lines to the GeoPackage
-        if self.split_lines_gdf is not None:
+        if self.split_lines_gdf is not None and intersection_layer:
             if len(self.intersection_gdf) > 0:
                 self.intersection_gdf.to_file(
-                    input_gpkg, layer="intersection_points", driver="GPKG"
+                    input_gpkg, layer=intersection_layer, driver="GPKG"
                 )
 
-        if self.split_lines_gdf is not None:
+        if self.split_lines_gdf is not None and line_layer:
             if len(self.split_lines_gdf) > 0:
                 self.split_lines_gdf.to_file(
-                    input_gpkg, layer="split_lines", driver="GPKG"
+                    input_gpkg, layer=line_layer, driver="GPKG"
                 )
 
         # save invalid splits
         invalid_splits = self.line_gdf.loc[self.line_gdf[INTER_STATUS_COL] == 0]
-        if not invalid_splits.empty:
+        if not invalid_splits.empty and invalid_layer:
             if len(invalid_splits) > 0:
                 invalid_splits.to_file(
-                    input_gpkg, layer="invalid_splits", driver="GPKG"
+                    input_gpkg, layer=invalid_layer, driver="GPKG"
                 )
     
-    def process(self):
-        """Find intersection points, split lines at intersections."""
-        self.find_intersections()
+    def process(self, intersection_gdf=None):
+        """
+        Find intersection points, split lines at intersections.
+
+        Args:
+        intersection_gdf: external GeoDataFrame with intersection points.
+
+        """
+        if intersection_gdf is not None:
+            self.intersection_gdf = intersection_gdf
+        else:
+            self.find_intersections()
+
         if self.inter_status:
             for idx in self.inter_status.keys():
                 self.line_gdf.loc[idx, INTER_STATUS_COL] = self.inter_status[idx]

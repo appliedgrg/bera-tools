@@ -419,6 +419,9 @@ class VertexNode:
     def trim_intersection(self, polys, merge_group=True):
         """Trim intersection of lines and polygons."""
         def get_poly_with_info(line, polys):
+            if polys.empty:
+                return None, None, None
+            
             for idx, row in polys.iterrows():
                 poly = row.geometry
                 if not poly: # TODO: no polygon
@@ -426,6 +429,8 @@ class VertexNode:
 
                 if poly.buffer(SMALL_BUFFER).contains(line):
                     return idx, poly, row['max_width']
+            
+            return None, None, None
                 
         poly_trim_list = []
         primary_lines = []
@@ -433,9 +438,9 @@ class VertexNode:
 
         # retrieve primary lines
         if len(self.line_connected) > 0:
-            for j in self.line_connected[0]:  # only one connected line is used
-                primary_lines.append(self.get_line(j))
-                _, poly, _ = get_poly_with_info(primary_lines[-1], polys)
+            for idx in self.line_connected[0]:  # only one connected line is used
+                primary_lines.append(self.get_line(idx))
+                _, poly, _ = get_poly_with_info(self.get_line(idx), polys)
                 p_primary_list.append(poly.buffer(bt_const.SMALL_BUFFER))
 
         line_idx_to_trim = self.line_not_connected

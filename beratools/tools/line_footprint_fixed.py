@@ -283,18 +283,23 @@ def line_footprint_fixed(
     processes,
     verbose,
     in_layer=None,
+    in_layer_lc_path="least_cost_path",
     in_layer_fp=None,
     out_layer=None,
     merge_group=True,
+    width_percentile=75,
     parallel_mode=bt_const.ParallelMode.MULTIPROCESSING
 ):
     n_samples = int(n_samples)
     offset = float(offset)
+    width_percentile=int(width_percentile)
 
     # TODO: refactor this code for better line quality check
     line_gdf = gpd.read_file(in_line, layer=in_layer)
+    lc_path_gdf = gpd.read_file(in_line, layer=in_layer_lc_path)
     if not merge_group:
         line_gdf.geometry = line_gdf.line_merge()
+        lc_path_gdf.geometry = lc_path_gdf.line_merge()
         
     line_gdf = algo_common.clean_line_geometries(line_gdf)
 
@@ -316,7 +321,23 @@ def line_footprint_fixed(
             merged_line_gdf = lg.run_line_merge()
             splitter = LineSplitter(merged_line_gdf)
             splitter.process()
-            splitter.save_to_geopackage(out_footprint)
+            splitter.save_to_geopackage(
+                out_footprint,
+                line_layer="split_centerline",
+                intersection_layer="inter_points",
+                invalid_layer="invalid_splits",
+            )
+
+            # least cost path merge and split
+            lg_leastcost = LineGrouping(lc_path_gdf, not merge_group)
+            lg_leastcost.run_grouping()
+            merged_lc_path_gdf = lg_leastcost.run_line_merge()
+            splitter_leastcost = LineSplitter(merged_lc_path_gdf)
+            splitter_leastcost.process(splitter.intersection_gdf)
+            splitter_leastcost.save_to_geopackage(
+                out_footprint,
+                line_layer="split_leastcost",
+            )
 
             lg = LineGrouping(splitter.split_lines_gdf, merge_group)
             lg.run_grouping()
