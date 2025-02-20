@@ -32,7 +32,7 @@ from beratools.core.tool_base import execute_multiprocessing
 
 FP_FIXED_WIDTH_DEFAULT = 5.0
 
-def prepare_line_args(line_gdf, poly_gdf, n_samples, offset):
+def prepare_line_args(line_gdf, poly_gdf, n_samples, offset, width_percentile):
     """
     Generate arguments for each line in the GeoDataFrame.
 
@@ -48,7 +48,7 @@ def prepare_line_args(line_gdf, poly_gdf, n_samples, offset):
             inter_poly :
             n_samples :
             offset :
-            i :  line ID
+            width_percentile :
 
     """
     spatial_index = poly_gdf.sindex
@@ -71,7 +71,7 @@ def prepare_line_args(line_gdf, poly_gdf, n_samples, offset):
 
         try:
             line_args.append(
-                [row, inter_poly, n_samples, offset, idx]
+                [row, inter_poly, n_samples, offset, width_percentile]
             )
         except Exception as e:
             print(e)
@@ -109,7 +109,7 @@ def process_single_line(line_arg):
     inter_poly = line_arg[1]
     n_samples = line_arg[2]
     offset = line_arg[3]
-    # line_id = line_arg[4]
+    width_percentile = line_arg[4]
 
     # TODO: deal with case when inter_poly is empty
     try:
@@ -130,7 +130,7 @@ def process_single_line(line_arg):
     try:
         # TODO: check the code. widths is empty
         if len(widths) > 0:
-            q3_width = np.percentile(widths, 40)
+            q3_width = np.percentile(widths, width_percentile)
             q4_width = np.percentile(widths, 90)
     except Exception as e:
         print(e)
@@ -334,6 +334,7 @@ def line_footprint_fixed(
             merged_lc_path_gdf = lg_leastcost.run_line_merge()
             splitter_leastcost = LineSplitter(merged_lc_path_gdf)
             splitter_leastcost.process(splitter.intersection_gdf)
+
             splitter_leastcost.save_to_geopackage(
                 out_footprint,
                 line_layer="split_leastcost",
@@ -349,7 +350,9 @@ def line_footprint_fixed(
     merged_line_gdf.to_file(out_footprint, layer="merged_lines_original")
 
     # prepare line arguments
-    line_args = prepare_line_args(merged_line_gdf, poly_gdf, n_samples, offset)
+    line_args = prepare_line_args(
+        merged_line_gdf, poly_gdf, n_samples, offset, width_percentile
+    )
 
     out_lines = execute_multiprocessing(
         process_single_line, line_args, "Fixed footprint", processes, mode=parallel_mode
