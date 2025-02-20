@@ -39,6 +39,7 @@ def run_line_merge(in_line_gdf, merge_group):
 
     out_line_gdf = algo_common.clean_line_geometries(out_line_gdf)
     out_line_gdf.reset_index(inplace=True, drop=True)
+    out_line_gdf['length'] = out_line_gdf.geometry.length
     return out_line_gdf
 
 class MergeLines:

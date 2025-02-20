@@ -231,6 +231,7 @@ class LineSplitter:
 
         if self.split_lines_gdf is not None and line_layer:
             if len(self.split_lines_gdf) > 0:
+                self.split_lines_gdf['length'] = self.split_lines_gdf.geometry.length
                 self.split_lines_gdf.to_file(
                     input_gpkg, layer=line_layer, driver="GPKG"
                 )
